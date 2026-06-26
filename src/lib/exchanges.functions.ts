@@ -31,17 +31,17 @@ export const upsertExchangeCredential = createServerFn({ method: "POST" })
   .inputValidator((input: unknown) => UpsertSchema.parse(input))
   .handler(async ({ data, context }) => {
     const { supabase, userId } = context;
-    const row: Record<string, unknown> = {
+    const row = {
       user_id: userId,
       exchange_id: data.exchange_id,
       label: data.label ?? null,
       enabled: data.enabled ?? true,
       is_trigger: data.is_trigger ?? false,
       taker_fee_bps: data.taker_fee_bps ?? null,
-    };
-    if (data.api_key !== undefined) row.api_key_enc = data.api_key ? btoa(data.api_key) : null;
-    if (data.api_secret !== undefined) row.api_secret_enc = data.api_secret ? btoa(data.api_secret) : null;
-    if (data.passphrase !== undefined) row.passphrase_enc = data.passphrase ? btoa(data.passphrase) : null;
+      api_key_enc: data.api_key !== undefined ? (data.api_key ? btoa(data.api_key) : null) : undefined,
+      api_secret_enc: data.api_secret !== undefined ? (data.api_secret ? btoa(data.api_secret) : null) : undefined,
+      passphrase_enc: data.passphrase !== undefined ? (data.passphrase ? btoa(data.passphrase) : null) : undefined,
+    } satisfies Record<string, unknown>;
     if (data.is_trigger) {
       await supabase.from("exchange_credentials").update({ is_trigger: false }).eq("user_id", userId);
     }
