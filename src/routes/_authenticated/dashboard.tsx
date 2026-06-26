@@ -31,8 +31,9 @@ function DashboardPage() {
     },
     initialData: Route.useLoaderData(),
   });
-  const trigger = data.creds?.find((c) => c.is_trigger);
-  const enabledCount = data.creds?.filter((c) => c.enabled).length ?? 0;
+  const creds = data.creds as Array<{ exchange_id: string; enabled: boolean; is_trigger: boolean }> | null;
+  const trigger = creds?.find((c) => c.is_trigger);
+  const enabledCount = creds?.filter((c) => c.enabled).length ?? 0;
 
   return (
     <div className="space-y-6 max-w-6xl">
