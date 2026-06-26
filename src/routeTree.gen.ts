@@ -13,6 +13,7 @@ import { Route as AuthRouteImport } from './routes/auth'
 import { Route as AuthenticatedRouteRouteImport } from './routes/_authenticated/route'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as AuthenticatedStrategyRouteImport } from './routes/_authenticated/strategy'
+import { Route as AuthenticatedSessionsRouteImport } from './routes/_authenticated/sessions'
 import { Route as AuthenticatedScannerRouteImport } from './routes/_authenticated/scanner'
 import { Route as AuthenticatedExchangesRouteImport } from './routes/_authenticated/exchanges'
 import { Route as AuthenticatedDashboardRouteImport } from './routes/_authenticated/dashboard'
@@ -34,6 +35,11 @@ const IndexRoute = IndexRouteImport.update({
 const AuthenticatedStrategyRoute = AuthenticatedStrategyRouteImport.update({
   id: '/strategy',
   path: '/strategy',
+  getParentRoute: () => AuthenticatedRouteRoute,
+} as any)
+const AuthenticatedSessionsRoute = AuthenticatedSessionsRouteImport.update({
+  id: '/sessions',
+  path: '/sessions',
   getParentRoute: () => AuthenticatedRouteRoute,
 } as any)
 const AuthenticatedScannerRoute = AuthenticatedScannerRouteImport.update({
@@ -58,6 +64,7 @@ export interface FileRoutesByFullPath {
   '/dashboard': typeof AuthenticatedDashboardRoute
   '/exchanges': typeof AuthenticatedExchangesRoute
   '/scanner': typeof AuthenticatedScannerRoute
+  '/sessions': typeof AuthenticatedSessionsRoute
   '/strategy': typeof AuthenticatedStrategyRoute
 }
 export interface FileRoutesByTo {
@@ -66,6 +73,7 @@ export interface FileRoutesByTo {
   '/dashboard': typeof AuthenticatedDashboardRoute
   '/exchanges': typeof AuthenticatedExchangesRoute
   '/scanner': typeof AuthenticatedScannerRoute
+  '/sessions': typeof AuthenticatedSessionsRoute
   '/strategy': typeof AuthenticatedStrategyRoute
 }
 export interface FileRoutesById {
@@ -76,6 +84,7 @@ export interface FileRoutesById {
   '/_authenticated/dashboard': typeof AuthenticatedDashboardRoute
   '/_authenticated/exchanges': typeof AuthenticatedExchangesRoute
   '/_authenticated/scanner': typeof AuthenticatedScannerRoute
+  '/_authenticated/sessions': typeof AuthenticatedSessionsRoute
   '/_authenticated/strategy': typeof AuthenticatedStrategyRoute
 }
 export interface FileRouteTypes {
@@ -86,9 +95,17 @@ export interface FileRouteTypes {
     | '/dashboard'
     | '/exchanges'
     | '/scanner'
+    | '/sessions'
     | '/strategy'
   fileRoutesByTo: FileRoutesByTo
-  to: '/' | '/auth' | '/dashboard' | '/exchanges' | '/scanner' | '/strategy'
+  to:
+    | '/'
+    | '/auth'
+    | '/dashboard'
+    | '/exchanges'
+    | '/scanner'
+    | '/sessions'
+    | '/strategy'
   id:
     | '__root__'
     | '/'
@@ -97,6 +114,7 @@ export interface FileRouteTypes {
     | '/_authenticated/dashboard'
     | '/_authenticated/exchanges'
     | '/_authenticated/scanner'
+    | '/_authenticated/sessions'
     | '/_authenticated/strategy'
   fileRoutesById: FileRoutesById
 }
@@ -136,6 +154,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedStrategyRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
+    '/_authenticated/sessions': {
+      id: '/_authenticated/sessions'
+      path: '/sessions'
+      fullPath: '/sessions'
+      preLoaderRoute: typeof AuthenticatedSessionsRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
     '/_authenticated/scanner': {
       id: '/_authenticated/scanner'
       path: '/scanner'
@@ -164,6 +189,7 @@ interface AuthenticatedRouteRouteChildren {
   AuthenticatedDashboardRoute: typeof AuthenticatedDashboardRoute
   AuthenticatedExchangesRoute: typeof AuthenticatedExchangesRoute
   AuthenticatedScannerRoute: typeof AuthenticatedScannerRoute
+  AuthenticatedSessionsRoute: typeof AuthenticatedSessionsRoute
   AuthenticatedStrategyRoute: typeof AuthenticatedStrategyRoute
 }
 
@@ -171,6 +197,7 @@ const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
   AuthenticatedDashboardRoute: AuthenticatedDashboardRoute,
   AuthenticatedExchangesRoute: AuthenticatedExchangesRoute,
   AuthenticatedScannerRoute: AuthenticatedScannerRoute,
+  AuthenticatedSessionsRoute: AuthenticatedSessionsRoute,
   AuthenticatedStrategyRoute: AuthenticatedStrategyRoute,
 }
 
