@@ -89,7 +89,7 @@ export type ScoredOpportunity = {
   staleness: number;
 };
 
-export function selectNonConflicting(candidates: ScoredOpportunity[], triggerCapitalUsd: number) {
+export function selectNonConflicting<T extends ScoredOpportunity>(candidates: T[], triggerCapitalUsd: number) {
   const sorted = candidates.slice().sort((a, b) =>
     b.expectedNetUsd - a.expectedNetUsd ||
     b.expectedNetPct - a.expectedNetPct ||
@@ -97,8 +97,8 @@ export function selectNonConflicting(candidates: ScoredOpportunity[], triggerCap
     a.staleness - b.staleness,
   );
   const used = new Set<string>();
-  const picked: ScoredOpportunity[] = [];
-  const skipped: ScoredOpportunity[] = [];
+  const picked: T[] = [];
+  const skipped: T[] = [];
   for (const o of sorted) {
     if (o.legs.some((l) => used.has(legKey(l)))) { skipped.push(o); continue; }
     picked.push(o);
