@@ -20,6 +20,7 @@ import { Route as AuthenticatedScannerRouteImport } from './routes/_authenticate
 import { Route as AuthenticatedLogsRouteImport } from './routes/_authenticated/logs'
 import { Route as AuthenticatedExchangesRouteImport } from './routes/_authenticated/exchanges'
 import { Route as AuthenticatedDashboardRouteImport } from './routes/_authenticated/dashboard'
+import { Route as AuthenticatedBotRouteImport } from './routes/_authenticated/bot'
 
 const AuthRoute = AuthRouteImport.update({
   id: '/auth',
@@ -75,10 +76,16 @@ const AuthenticatedDashboardRoute = AuthenticatedDashboardRouteImport.update({
   path: '/dashboard',
   getParentRoute: () => AuthenticatedRouteRoute,
 } as any)
+const AuthenticatedBotRoute = AuthenticatedBotRouteImport.update({
+  id: '/bot',
+  path: '/bot',
+  getParentRoute: () => AuthenticatedRouteRoute,
+} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/auth': typeof AuthRoute
+  '/bot': typeof AuthenticatedBotRoute
   '/dashboard': typeof AuthenticatedDashboardRoute
   '/exchanges': typeof AuthenticatedExchangesRoute
   '/logs': typeof AuthenticatedLogsRoute
@@ -91,6 +98,7 @@ export interface FileRoutesByFullPath {
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/auth': typeof AuthRoute
+  '/bot': typeof AuthenticatedBotRoute
   '/dashboard': typeof AuthenticatedDashboardRoute
   '/exchanges': typeof AuthenticatedExchangesRoute
   '/logs': typeof AuthenticatedLogsRoute
@@ -105,6 +113,7 @@ export interface FileRoutesById {
   '/': typeof IndexRoute
   '/_authenticated': typeof AuthenticatedRouteRouteWithChildren
   '/auth': typeof AuthRoute
+  '/_authenticated/bot': typeof AuthenticatedBotRoute
   '/_authenticated/dashboard': typeof AuthenticatedDashboardRoute
   '/_authenticated/exchanges': typeof AuthenticatedExchangesRoute
   '/_authenticated/logs': typeof AuthenticatedLogsRoute
@@ -119,6 +128,7 @@ export interface FileRouteTypes {
   fullPaths:
     | '/'
     | '/auth'
+    | '/bot'
     | '/dashboard'
     | '/exchanges'
     | '/logs'
@@ -131,6 +141,7 @@ export interface FileRouteTypes {
   to:
     | '/'
     | '/auth'
+    | '/bot'
     | '/dashboard'
     | '/exchanges'
     | '/logs'
@@ -144,6 +155,7 @@ export interface FileRouteTypes {
     | '/'
     | '/_authenticated'
     | '/auth'
+    | '/_authenticated/bot'
     | '/_authenticated/dashboard'
     | '/_authenticated/exchanges'
     | '/_authenticated/logs'
@@ -239,10 +251,18 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedDashboardRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
+    '/_authenticated/bot': {
+      id: '/_authenticated/bot'
+      path: '/bot'
+      fullPath: '/bot'
+      preLoaderRoute: typeof AuthenticatedBotRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
   }
 }
 
 interface AuthenticatedRouteRouteChildren {
+  AuthenticatedBotRoute: typeof AuthenticatedBotRoute
   AuthenticatedDashboardRoute: typeof AuthenticatedDashboardRoute
   AuthenticatedExchangesRoute: typeof AuthenticatedExchangesRoute
   AuthenticatedLogsRoute: typeof AuthenticatedLogsRoute
@@ -254,6 +274,7 @@ interface AuthenticatedRouteRouteChildren {
 }
 
 const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
+  AuthenticatedBotRoute: AuthenticatedBotRoute,
   AuthenticatedDashboardRoute: AuthenticatedDashboardRoute,
   AuthenticatedExchangesRoute: AuthenticatedExchangesRoute,
   AuthenticatedLogsRoute: AuthenticatedLogsRoute,
