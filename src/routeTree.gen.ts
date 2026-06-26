@@ -12,6 +12,7 @@ import { Route as rootRouteImport } from './routes/__root'
 import { Route as AuthRouteImport } from './routes/auth'
 import { Route as AuthenticatedRouteRouteImport } from './routes/_authenticated/route'
 import { Route as IndexRouteImport } from './routes/index'
+import { Route as AuthenticatedTradesRouteImport } from './routes/_authenticated/trades'
 import { Route as AuthenticatedStrategyRouteImport } from './routes/_authenticated/strategy'
 import { Route as AuthenticatedSessionsRouteImport } from './routes/_authenticated/sessions'
 import { Route as AuthenticatedScannerRouteImport } from './routes/_authenticated/scanner'
@@ -31,6 +32,11 @@ const IndexRoute = IndexRouteImport.update({
   id: '/',
   path: '/',
   getParentRoute: () => rootRouteImport,
+} as any)
+const AuthenticatedTradesRoute = AuthenticatedTradesRouteImport.update({
+  id: '/trades',
+  path: '/trades',
+  getParentRoute: () => AuthenticatedRouteRoute,
 } as any)
 const AuthenticatedStrategyRoute = AuthenticatedStrategyRouteImport.update({
   id: '/strategy',
@@ -66,6 +72,7 @@ export interface FileRoutesByFullPath {
   '/scanner': typeof AuthenticatedScannerRoute
   '/sessions': typeof AuthenticatedSessionsRoute
   '/strategy': typeof AuthenticatedStrategyRoute
+  '/trades': typeof AuthenticatedTradesRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
@@ -75,6 +82,7 @@ export interface FileRoutesByTo {
   '/scanner': typeof AuthenticatedScannerRoute
   '/sessions': typeof AuthenticatedSessionsRoute
   '/strategy': typeof AuthenticatedStrategyRoute
+  '/trades': typeof AuthenticatedTradesRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -86,6 +94,7 @@ export interface FileRoutesById {
   '/_authenticated/scanner': typeof AuthenticatedScannerRoute
   '/_authenticated/sessions': typeof AuthenticatedSessionsRoute
   '/_authenticated/strategy': typeof AuthenticatedStrategyRoute
+  '/_authenticated/trades': typeof AuthenticatedTradesRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -97,6 +106,7 @@ export interface FileRouteTypes {
     | '/scanner'
     | '/sessions'
     | '/strategy'
+    | '/trades'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
@@ -106,6 +116,7 @@ export interface FileRouteTypes {
     | '/scanner'
     | '/sessions'
     | '/strategy'
+    | '/trades'
   id:
     | '__root__'
     | '/'
@@ -116,6 +127,7 @@ export interface FileRouteTypes {
     | '/_authenticated/scanner'
     | '/_authenticated/sessions'
     | '/_authenticated/strategy'
+    | '/_authenticated/trades'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -146,6 +158,13 @@ declare module '@tanstack/react-router' {
       fullPath: '/'
       preLoaderRoute: typeof IndexRouteImport
       parentRoute: typeof rootRouteImport
+    }
+    '/_authenticated/trades': {
+      id: '/_authenticated/trades'
+      path: '/trades'
+      fullPath: '/trades'
+      preLoaderRoute: typeof AuthenticatedTradesRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
     }
     '/_authenticated/strategy': {
       id: '/_authenticated/strategy'
@@ -191,6 +210,7 @@ interface AuthenticatedRouteRouteChildren {
   AuthenticatedScannerRoute: typeof AuthenticatedScannerRoute
   AuthenticatedSessionsRoute: typeof AuthenticatedSessionsRoute
   AuthenticatedStrategyRoute: typeof AuthenticatedStrategyRoute
+  AuthenticatedTradesRoute: typeof AuthenticatedTradesRoute
 }
 
 const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
@@ -199,6 +219,7 @@ const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
   AuthenticatedScannerRoute: AuthenticatedScannerRoute,
   AuthenticatedSessionsRoute: AuthenticatedSessionsRoute,
   AuthenticatedStrategyRoute: AuthenticatedStrategyRoute,
+  AuthenticatedTradesRoute: AuthenticatedTradesRoute,
 }
 
 const AuthenticatedRouteRouteWithChildren =
