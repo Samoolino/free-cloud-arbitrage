@@ -21,6 +21,7 @@ import { Route as AuthenticatedLogsRouteImport } from './routes/_authenticated/l
 import { Route as AuthenticatedExchangesRouteImport } from './routes/_authenticated/exchanges'
 import { Route as AuthenticatedDashboardRouteImport } from './routes/_authenticated/dashboard'
 import { Route as AuthenticatedBotRouteImport } from './routes/_authenticated/bot'
+import { Route as ApiPublicBotIntentsRouteImport } from './routes/api/public/bot/intents'
 import { Route as ApiPublicBotConfigRouteImport } from './routes/api/public/bot/config'
 
 const AuthRoute = AuthRouteImport.update({
@@ -82,6 +83,11 @@ const AuthenticatedBotRoute = AuthenticatedBotRouteImport.update({
   path: '/bot',
   getParentRoute: () => AuthenticatedRouteRoute,
 } as any)
+const ApiPublicBotIntentsRoute = ApiPublicBotIntentsRouteImport.update({
+  id: '/api/public/bot/intents',
+  path: '/api/public/bot/intents',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ApiPublicBotConfigRoute = ApiPublicBotConfigRouteImport.update({
   id: '/api/public/bot/config',
   path: '/api/public/bot/config',
@@ -101,6 +107,7 @@ export interface FileRoutesByFullPath {
   '/trades': typeof AuthenticatedTradesRoute
   '/transfers': typeof AuthenticatedTransfersRoute
   '/api/public/bot/config': typeof ApiPublicBotConfigRoute
+  '/api/public/bot/intents': typeof ApiPublicBotIntentsRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
@@ -115,6 +122,7 @@ export interface FileRoutesByTo {
   '/trades': typeof AuthenticatedTradesRoute
   '/transfers': typeof AuthenticatedTransfersRoute
   '/api/public/bot/config': typeof ApiPublicBotConfigRoute
+  '/api/public/bot/intents': typeof ApiPublicBotIntentsRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -131,6 +139,7 @@ export interface FileRoutesById {
   '/_authenticated/trades': typeof AuthenticatedTradesRoute
   '/_authenticated/transfers': typeof AuthenticatedTransfersRoute
   '/api/public/bot/config': typeof ApiPublicBotConfigRoute
+  '/api/public/bot/intents': typeof ApiPublicBotIntentsRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -147,6 +156,7 @@ export interface FileRouteTypes {
     | '/trades'
     | '/transfers'
     | '/api/public/bot/config'
+    | '/api/public/bot/intents'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
@@ -161,6 +171,7 @@ export interface FileRouteTypes {
     | '/trades'
     | '/transfers'
     | '/api/public/bot/config'
+    | '/api/public/bot/intents'
   id:
     | '__root__'
     | '/'
@@ -176,6 +187,7 @@ export interface FileRouteTypes {
     | '/_authenticated/trades'
     | '/_authenticated/transfers'
     | '/api/public/bot/config'
+    | '/api/public/bot/intents'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -183,6 +195,7 @@ export interface RootRouteChildren {
   AuthenticatedRouteRoute: typeof AuthenticatedRouteRouteWithChildren
   AuthRoute: typeof AuthRoute
   ApiPublicBotConfigRoute: typeof ApiPublicBotConfigRoute
+  ApiPublicBotIntentsRoute: typeof ApiPublicBotIntentsRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -271,6 +284,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedBotRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
+    '/api/public/bot/intents': {
+      id: '/api/public/bot/intents'
+      path: '/api/public/bot/intents'
+      fullPath: '/api/public/bot/intents'
+      preLoaderRoute: typeof ApiPublicBotIntentsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/api/public/bot/config': {
       id: '/api/public/bot/config'
       path: '/api/public/bot/config'
@@ -313,6 +333,7 @@ const rootRouteChildren: RootRouteChildren = {
   AuthenticatedRouteRoute: AuthenticatedRouteRouteWithChildren,
   AuthRoute: AuthRoute,
   ApiPublicBotConfigRoute: ApiPublicBotConfigRoute,
+  ApiPublicBotIntentsRoute: ApiPublicBotIntentsRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
