@@ -24,8 +24,12 @@ function ExchangesPage() {
   const qc = useQueryClient();
   const { data } = useQuery({ queryKey: ["creds"], queryFn: listExchangeCredentials });
   const creds = (data as Cred[] | undefined) ?? [];
+  type UpsertVars = {
+    exchange_id: string; label?: string | null; api_key?: string; api_secret?: string;
+    passphrase?: string; enabled?: boolean; is_trigger?: boolean; taker_fee_bps?: number | null;
+  };
   const upsert = useMutation({
-    mutationFn: (vars: Parameters<typeof upsertExchangeCredential>[0]["data"]) => upsertExchangeCredential({ data: vars }),
+    mutationFn: (vars: UpsertVars) => upsertExchangeCredential({ data: vars }),
     onSuccess: () => { qc.invalidateQueries({ queryKey: ["creds"] }); toast.success("Saved"); },
     onError: (e: Error) => toast.error(e.message),
   });

@@ -14,6 +14,7 @@ import { Route as AuthenticatedRouteRouteImport } from './routes/_authenticated/
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as AuthenticatedStrategyRouteImport } from './routes/_authenticated/strategy'
 import { Route as AuthenticatedScannerRouteImport } from './routes/_authenticated/scanner'
+import { Route as AuthenticatedExchangesRouteImport } from './routes/_authenticated/exchanges'
 import { Route as AuthenticatedDashboardRouteImport } from './routes/_authenticated/dashboard'
 
 const AuthRoute = AuthRouteImport.update({
@@ -40,6 +41,11 @@ const AuthenticatedScannerRoute = AuthenticatedScannerRouteImport.update({
   path: '/scanner',
   getParentRoute: () => AuthenticatedRouteRoute,
 } as any)
+const AuthenticatedExchangesRoute = AuthenticatedExchangesRouteImport.update({
+  id: '/exchanges',
+  path: '/exchanges',
+  getParentRoute: () => AuthenticatedRouteRoute,
+} as any)
 const AuthenticatedDashboardRoute = AuthenticatedDashboardRouteImport.update({
   id: '/dashboard',
   path: '/dashboard',
@@ -50,6 +56,7 @@ export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/auth': typeof AuthRoute
   '/dashboard': typeof AuthenticatedDashboardRoute
+  '/exchanges': typeof AuthenticatedExchangesRoute
   '/scanner': typeof AuthenticatedScannerRoute
   '/strategy': typeof AuthenticatedStrategyRoute
 }
@@ -57,6 +64,7 @@ export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/auth': typeof AuthRoute
   '/dashboard': typeof AuthenticatedDashboardRoute
+  '/exchanges': typeof AuthenticatedExchangesRoute
   '/scanner': typeof AuthenticatedScannerRoute
   '/strategy': typeof AuthenticatedStrategyRoute
 }
@@ -66,20 +74,28 @@ export interface FileRoutesById {
   '/_authenticated': typeof AuthenticatedRouteRouteWithChildren
   '/auth': typeof AuthRoute
   '/_authenticated/dashboard': typeof AuthenticatedDashboardRoute
+  '/_authenticated/exchanges': typeof AuthenticatedExchangesRoute
   '/_authenticated/scanner': typeof AuthenticatedScannerRoute
   '/_authenticated/strategy': typeof AuthenticatedStrategyRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/' | '/auth' | '/dashboard' | '/scanner' | '/strategy'
+  fullPaths:
+    | '/'
+    | '/auth'
+    | '/dashboard'
+    | '/exchanges'
+    | '/scanner'
+    | '/strategy'
   fileRoutesByTo: FileRoutesByTo
-  to: '/' | '/auth' | '/dashboard' | '/scanner' | '/strategy'
+  to: '/' | '/auth' | '/dashboard' | '/exchanges' | '/scanner' | '/strategy'
   id:
     | '__root__'
     | '/'
     | '/_authenticated'
     | '/auth'
     | '/_authenticated/dashboard'
+    | '/_authenticated/exchanges'
     | '/_authenticated/scanner'
     | '/_authenticated/strategy'
   fileRoutesById: FileRoutesById
@@ -127,6 +143,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedScannerRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
+    '/_authenticated/exchanges': {
+      id: '/_authenticated/exchanges'
+      path: '/exchanges'
+      fullPath: '/exchanges'
+      preLoaderRoute: typeof AuthenticatedExchangesRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
     '/_authenticated/dashboard': {
       id: '/_authenticated/dashboard'
       path: '/dashboard'
@@ -139,12 +162,14 @@ declare module '@tanstack/react-router' {
 
 interface AuthenticatedRouteRouteChildren {
   AuthenticatedDashboardRoute: typeof AuthenticatedDashboardRoute
+  AuthenticatedExchangesRoute: typeof AuthenticatedExchangesRoute
   AuthenticatedScannerRoute: typeof AuthenticatedScannerRoute
   AuthenticatedStrategyRoute: typeof AuthenticatedStrategyRoute
 }
 
 const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
   AuthenticatedDashboardRoute: AuthenticatedDashboardRoute,
+  AuthenticatedExchangesRoute: AuthenticatedExchangesRoute,
   AuthenticatedScannerRoute: AuthenticatedScannerRoute,
   AuthenticatedStrategyRoute: AuthenticatedStrategyRoute,
 }
