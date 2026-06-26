@@ -72,7 +72,7 @@ export const recordPaperTrade = createServerFn({ method: "POST" })
       user_id: userId,
       session_id: data.session_id,
       strategy: data.strategy,
-      legs: data.legs as object,
+      legs: data.legs as never,
       notional_usd: data.notional_usd,
       realized_pnl_usd: data.realized_pnl_usd,
       paper: true,
