@@ -17,13 +17,41 @@ function BotPage() {
       </header>
 
       <Card>
-        <CardHeader><CardTitle className="text-base">Endpoints (HMAC-SHA256 with BOT_SHARED_SECRET)</CardTitle></CardHeader>
+        <CardHeader><CardTitle className="text-base">Endpoints (live)</CardTitle></CardHeader>
         <CardContent className="space-y-2 text-sm font-mono">
-          <div><Badge variant="outline">GET</Badge> /api/bot/config — returns active strategy snapshot</div>
-          <div><Badge variant="outline">GET</Badge> /api/bot/intents — pending trade intents (FIFO)</div>
-          <div><Badge variant="outline">POST</Badge> /api/bot/fills — report executed fills + realized PnL</div>
-          <div><Badge variant="outline">POST</Badge> /api/bot/transfers — report withdrawal lifecycle</div>
-          <div><Badge variant="outline">POST</Badge> /api/bot/events — stream system_events from the executor</div>
+          <div><Badge variant="outline">GET</Badge> /api/public/bot/config — config + active session + enabled exchanges</div>
+          <div><Badge variant="outline">GET</Badge> /api/public/bot/intents?limit=10 — FIFO queued intents (auto-marks <code>acked</code>)</div>
+          <div><Badge variant="outline">POST</Badge> /api/public/bot/intents — explicit ack <code>{`{ id, status }`}</code></div>
+          <div><Badge variant="outline">POST</Badge> /api/public/bot/fills — report fill + realized PnL, writes <code>trades</code></div>
+          <div><Badge variant="outline">POST</Badge> /api/public/bot/transfers — upsert withdrawal lifecycle</div>
+          <div><Badge variant="outline">POST</Badge> /api/public/bot/events — batch <code>system_events</code></div>
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader><CardTitle className="text-base">Auth (HMAC-SHA256 with BOT_SHARED_SECRET)</CardTitle></CardHeader>
+        <CardContent className="space-y-2 text-sm">
+          <p>Every request must include three headers:</p>
+          <ul className="list-disc ml-5 font-mono text-xs">
+            <li>x-bot-timestamp: unix ms (rejected if &gt; 5 min skew)</li>
+            <li>x-bot-user-id: your account uuid</li>
+            <li>x-bot-signature: hex HMAC-SHA256 of <code>{`${"`"}${"$"}{ts}.${"$"}{METHOD}.${"$"}{pathname}.${"$"}{rawBody}${"`"}`}</code></li>
+          </ul>
+          <pre className="text-xs bg-muted/40 p-3 rounded overflow-x-auto">{`import hmac, hashlib, time, json, requests
+
+SECRET = os.environ["BOT_SHARED_SECRET"].encode()
+USER   = os.environ["BOT_USER_ID"]
+BASE   = "https://<your-app>.lovable.app"
+
+def call(method, path, body=None):
+    raw = "" if body is None else json.dumps(body, separators=(",",":"))
+    ts  = str(int(time.time()*1000))
+    sig = hmac.new(SECRET, f"{ts}.{method}.{path}.{raw}".encode(),
+                   hashlib.sha256).hexdigest()
+    return requests.request(method, BASE+path, data=raw, headers={
+      "Content-Type": "application/json",
+      "x-bot-timestamp": ts, "x-bot-user-id": USER, "x-bot-signature": sig,
+    }).json()`}</pre>
         </CardContent>
       </Card>
 
