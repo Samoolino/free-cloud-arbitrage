@@ -49,7 +49,17 @@ python worker.py --once
 
 This will poll pending Supabase signals once and exit.
 
-## 4. Run as a background service
+## 4. Run the async arbitrage orderbook worker
+
+For real-time orderbook streaming and depth-based opportunity checks:
+
+```powershell
+python arbitrage_worker.py
+```
+
+This worker connects to multiple exchange feeds concurrently and writes arbitrage signals into the Supabase table `arbitrage_signals`.
+
+## 5. Run as a background service
 
 For normal continuous operation:
 
