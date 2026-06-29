@@ -16,6 +16,7 @@ export const getBotConfig = createServerFn({ method: "GET" })
 
 const UpdateSchema = z.object({
   paper_trading: z.boolean().optional(),
+  dry_run: z.boolean().optional(),
   target_profit_pct: z.number().min(0).max(50).optional(),
   slippage_buffer_pct: z.number().min(0).max(10).optional(),
   min_trigger_balance_usd: z.number().min(0).optional(),
