@@ -14,6 +14,7 @@ import { Route as AuthenticatedRouteRouteImport } from './routes/_authenticated/
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as AuthenticatedTransfersRouteImport } from './routes/_authenticated/transfers'
 import { Route as AuthenticatedTradesRouteImport } from './routes/_authenticated/trades'
+import { Route as AuthenticatedSyncRouteImport } from './routes/_authenticated/sync'
 import { Route as AuthenticatedStrategyRouteImport } from './routes/_authenticated/strategy'
 import { Route as AuthenticatedSessionsRouteImport } from './routes/_authenticated/sessions'
 import { Route as AuthenticatedScannerRouteImport } from './routes/_authenticated/scanner'
@@ -22,6 +23,7 @@ import { Route as AuthenticatedExchangesRouteImport } from './routes/_authentica
 import { Route as AuthenticatedDashboardRouteImport } from './routes/_authenticated/dashboard'
 import { Route as AuthenticatedBotRouteImport } from './routes/_authenticated/bot'
 import { Route as ApiPublicBotTransfersRouteImport } from './routes/api/public/bot/transfers'
+import { Route as ApiPublicBotStatusRouteImport } from './routes/api/public/bot/status'
 import { Route as ApiPublicBotIntentsRouteImport } from './routes/api/public/bot/intents'
 import { Route as ApiPublicBotFillsRouteImport } from './routes/api/public/bot/fills'
 import { Route as ApiPublicBotEventsRouteImport } from './routes/api/public/bot/events'
@@ -49,6 +51,11 @@ const AuthenticatedTransfersRoute = AuthenticatedTransfersRouteImport.update({
 const AuthenticatedTradesRoute = AuthenticatedTradesRouteImport.update({
   id: '/trades',
   path: '/trades',
+  getParentRoute: () => AuthenticatedRouteRoute,
+} as any)
+const AuthenticatedSyncRoute = AuthenticatedSyncRouteImport.update({
+  id: '/sync',
+  path: '/sync',
   getParentRoute: () => AuthenticatedRouteRoute,
 } as any)
 const AuthenticatedStrategyRoute = AuthenticatedStrategyRouteImport.update({
@@ -91,6 +98,11 @@ const ApiPublicBotTransfersRoute = ApiPublicBotTransfersRouteImport.update({
   path: '/api/public/bot/transfers',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ApiPublicBotStatusRoute = ApiPublicBotStatusRouteImport.update({
+  id: '/api/public/bot/status',
+  path: '/api/public/bot/status',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ApiPublicBotIntentsRoute = ApiPublicBotIntentsRouteImport.update({
   id: '/api/public/bot/intents',
   path: '/api/public/bot/intents',
@@ -122,12 +134,14 @@ export interface FileRoutesByFullPath {
   '/scanner': typeof AuthenticatedScannerRoute
   '/sessions': typeof AuthenticatedSessionsRoute
   '/strategy': typeof AuthenticatedStrategyRoute
+  '/sync': typeof AuthenticatedSyncRoute
   '/trades': typeof AuthenticatedTradesRoute
   '/transfers': typeof AuthenticatedTransfersRoute
   '/api/public/bot/config': typeof ApiPublicBotConfigRoute
   '/api/public/bot/events': typeof ApiPublicBotEventsRoute
   '/api/public/bot/fills': typeof ApiPublicBotFillsRoute
   '/api/public/bot/intents': typeof ApiPublicBotIntentsRoute
+  '/api/public/bot/status': typeof ApiPublicBotStatusRoute
   '/api/public/bot/transfers': typeof ApiPublicBotTransfersRoute
 }
 export interface FileRoutesByTo {
@@ -140,12 +154,14 @@ export interface FileRoutesByTo {
   '/scanner': typeof AuthenticatedScannerRoute
   '/sessions': typeof AuthenticatedSessionsRoute
   '/strategy': typeof AuthenticatedStrategyRoute
+  '/sync': typeof AuthenticatedSyncRoute
   '/trades': typeof AuthenticatedTradesRoute
   '/transfers': typeof AuthenticatedTransfersRoute
   '/api/public/bot/config': typeof ApiPublicBotConfigRoute
   '/api/public/bot/events': typeof ApiPublicBotEventsRoute
   '/api/public/bot/fills': typeof ApiPublicBotFillsRoute
   '/api/public/bot/intents': typeof ApiPublicBotIntentsRoute
+  '/api/public/bot/status': typeof ApiPublicBotStatusRoute
   '/api/public/bot/transfers': typeof ApiPublicBotTransfersRoute
 }
 export interface FileRoutesById {
@@ -160,12 +176,14 @@ export interface FileRoutesById {
   '/_authenticated/scanner': typeof AuthenticatedScannerRoute
   '/_authenticated/sessions': typeof AuthenticatedSessionsRoute
   '/_authenticated/strategy': typeof AuthenticatedStrategyRoute
+  '/_authenticated/sync': typeof AuthenticatedSyncRoute
   '/_authenticated/trades': typeof AuthenticatedTradesRoute
   '/_authenticated/transfers': typeof AuthenticatedTransfersRoute
   '/api/public/bot/config': typeof ApiPublicBotConfigRoute
   '/api/public/bot/events': typeof ApiPublicBotEventsRoute
   '/api/public/bot/fills': typeof ApiPublicBotFillsRoute
   '/api/public/bot/intents': typeof ApiPublicBotIntentsRoute
+  '/api/public/bot/status': typeof ApiPublicBotStatusRoute
   '/api/public/bot/transfers': typeof ApiPublicBotTransfersRoute
 }
 export interface FileRouteTypes {
@@ -180,12 +198,14 @@ export interface FileRouteTypes {
     | '/scanner'
     | '/sessions'
     | '/strategy'
+    | '/sync'
     | '/trades'
     | '/transfers'
     | '/api/public/bot/config'
     | '/api/public/bot/events'
     | '/api/public/bot/fills'
     | '/api/public/bot/intents'
+    | '/api/public/bot/status'
     | '/api/public/bot/transfers'
   fileRoutesByTo: FileRoutesByTo
   to:
@@ -198,12 +218,14 @@ export interface FileRouteTypes {
     | '/scanner'
     | '/sessions'
     | '/strategy'
+    | '/sync'
     | '/trades'
     | '/transfers'
     | '/api/public/bot/config'
     | '/api/public/bot/events'
     | '/api/public/bot/fills'
     | '/api/public/bot/intents'
+    | '/api/public/bot/status'
     | '/api/public/bot/transfers'
   id:
     | '__root__'
@@ -217,12 +239,14 @@ export interface FileRouteTypes {
     | '/_authenticated/scanner'
     | '/_authenticated/sessions'
     | '/_authenticated/strategy'
+    | '/_authenticated/sync'
     | '/_authenticated/trades'
     | '/_authenticated/transfers'
     | '/api/public/bot/config'
     | '/api/public/bot/events'
     | '/api/public/bot/fills'
     | '/api/public/bot/intents'
+    | '/api/public/bot/status'
     | '/api/public/bot/transfers'
   fileRoutesById: FileRoutesById
 }
@@ -234,6 +258,7 @@ export interface RootRouteChildren {
   ApiPublicBotEventsRoute: typeof ApiPublicBotEventsRoute
   ApiPublicBotFillsRoute: typeof ApiPublicBotFillsRoute
   ApiPublicBotIntentsRoute: typeof ApiPublicBotIntentsRoute
+  ApiPublicBotStatusRoute: typeof ApiPublicBotStatusRoute
   ApiPublicBotTransfersRoute: typeof ApiPublicBotTransfersRoute
 }
 
@@ -272,6 +297,13 @@ declare module '@tanstack/react-router' {
       path: '/trades'
       fullPath: '/trades'
       preLoaderRoute: typeof AuthenticatedTradesRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
+    '/_authenticated/sync': {
+      id: '/_authenticated/sync'
+      path: '/sync'
+      fullPath: '/sync'
+      preLoaderRoute: typeof AuthenticatedSyncRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
     '/_authenticated/strategy': {
@@ -330,6 +362,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiPublicBotTransfersRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/public/bot/status': {
+      id: '/api/public/bot/status'
+      path: '/api/public/bot/status'
+      fullPath: '/api/public/bot/status'
+      preLoaderRoute: typeof ApiPublicBotStatusRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/api/public/bot/intents': {
       id: '/api/public/bot/intents'
       path: '/api/public/bot/intents'
@@ -369,6 +408,7 @@ interface AuthenticatedRouteRouteChildren {
   AuthenticatedScannerRoute: typeof AuthenticatedScannerRoute
   AuthenticatedSessionsRoute: typeof AuthenticatedSessionsRoute
   AuthenticatedStrategyRoute: typeof AuthenticatedStrategyRoute
+  AuthenticatedSyncRoute: typeof AuthenticatedSyncRoute
   AuthenticatedTradesRoute: typeof AuthenticatedTradesRoute
   AuthenticatedTransfersRoute: typeof AuthenticatedTransfersRoute
 }
@@ -381,6 +421,7 @@ const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
   AuthenticatedScannerRoute: AuthenticatedScannerRoute,
   AuthenticatedSessionsRoute: AuthenticatedSessionsRoute,
   AuthenticatedStrategyRoute: AuthenticatedStrategyRoute,
+  AuthenticatedSyncRoute: AuthenticatedSyncRoute,
   AuthenticatedTradesRoute: AuthenticatedTradesRoute,
   AuthenticatedTransfersRoute: AuthenticatedTransfersRoute,
 }
@@ -396,18 +437,9 @@ const rootRouteChildren: RootRouteChildren = {
   ApiPublicBotEventsRoute: ApiPublicBotEventsRoute,
   ApiPublicBotFillsRoute: ApiPublicBotFillsRoute,
   ApiPublicBotIntentsRoute: ApiPublicBotIntentsRoute,
+  ApiPublicBotStatusRoute: ApiPublicBotStatusRoute,
   ApiPublicBotTransfersRoute: ApiPublicBotTransfersRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
   ._addFileTypes<FileRouteTypes>()
-
-import type { getRouter } from './router.tsx'
-import type { startInstance } from './start.ts'
-declare module '@tanstack/react-start' {
-  interface Register {
-    ssr: true
-    router: Awaited<ReturnType<typeof getRouter>>
-    config: Awaited<ReturnType<typeof startInstance.getOptions>>
-  }
-}

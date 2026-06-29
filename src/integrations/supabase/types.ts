@@ -46,6 +46,7 @@ export type Database = {
           bot_secret_hint: string | null
           coingecko_plan: string
           conflict_mode: string
+          dry_run: boolean
           enabled_exchanges: string[]
           min_trigger_balance_usd: number
           paper_trading: boolean
@@ -62,6 +63,7 @@ export type Database = {
           bot_secret_hint?: string | null
           coingecko_plan?: string
           conflict_mode?: string
+          dry_run?: boolean
           enabled_exchanges?: string[]
           min_trigger_balance_usd?: number
           paper_trading?: boolean
@@ -78,6 +80,7 @@ export type Database = {
           bot_secret_hint?: string | null
           coingecko_plan?: string
           conflict_mode?: string
+          dry_run?: boolean
           enabled_exchanges?: string[]
           min_trigger_balance_usd?: number
           paper_trading?: boolean

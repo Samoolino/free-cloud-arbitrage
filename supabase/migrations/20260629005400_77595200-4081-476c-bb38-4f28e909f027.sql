@@ -1,0 +1,1 @@
+ALTER TABLE public.bot_config ADD COLUMN IF NOT EXISTS dry_run boolean NOT NULL DEFAULT true;

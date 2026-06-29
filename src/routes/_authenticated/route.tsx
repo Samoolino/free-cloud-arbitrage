@@ -11,6 +11,7 @@ import {
   History,
   ScrollText,
   Bot,
+  GitBranch,
   LogOut,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -35,6 +36,7 @@ const NAV = [
   { to: "/transfers", label: "Transfers", icon: ArrowLeftRight },
   { to: "/logs", label: "Logs", icon: ScrollText },
   { to: "/bot", label: "Executor", icon: Bot },
+  { to: "/sync", label: "Git sync", icon: GitBranch },
 ] as const;
 
 function AuthedLayout() {

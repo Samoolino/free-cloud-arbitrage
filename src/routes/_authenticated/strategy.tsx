@@ -60,6 +60,10 @@ function StrategyPage() {
             <Switch checked={!!form.paper_trading} onCheckedChange={(v) => setForm({ ...form, paper_trading: v })} />
             <Label className="text-xs">Paper trading mode</Label>
           </div>
+          <div className="flex items-center gap-3 pt-5">
+            <Switch checked={!!form.dry_run} onCheckedChange={(v) => setForm({ ...form, dry_run: v })} />
+            <Label className="text-xs">Executor dry-run (no live orders)</Label>
+          </div>
         </CardContent>
       </Card>
 
