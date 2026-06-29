@@ -22,6 +22,7 @@ import { Route as AuthenticatedExchangesRouteImport } from './routes/_authentica
 import { Route as AuthenticatedDashboardRouteImport } from './routes/_authenticated/dashboard'
 import { Route as AuthenticatedBotRouteImport } from './routes/_authenticated/bot'
 import { Route as ApiPublicBotTransfersRouteImport } from './routes/api/public/bot/transfers'
+import { Route as ApiPublicBotStatusRouteImport } from './routes/api/public/bot/status'
 import { Route as ApiPublicBotIntentsRouteImport } from './routes/api/public/bot/intents'
 import { Route as ApiPublicBotFillsRouteImport } from './routes/api/public/bot/fills'
 import { Route as ApiPublicBotEventsRouteImport } from './routes/api/public/bot/events'
@@ -91,6 +92,11 @@ const ApiPublicBotTransfersRoute = ApiPublicBotTransfersRouteImport.update({
   path: '/api/public/bot/transfers',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ApiPublicBotStatusRoute = ApiPublicBotStatusRouteImport.update({
+  id: '/api/public/bot/status',
+  path: '/api/public/bot/status',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ApiPublicBotIntentsRoute = ApiPublicBotIntentsRouteImport.update({
   id: '/api/public/bot/intents',
   path: '/api/public/bot/intents',
@@ -128,6 +134,7 @@ export interface FileRoutesByFullPath {
   '/api/public/bot/events': typeof ApiPublicBotEventsRoute
   '/api/public/bot/fills': typeof ApiPublicBotFillsRoute
   '/api/public/bot/intents': typeof ApiPublicBotIntentsRoute
+  '/api/public/bot/status': typeof ApiPublicBotStatusRoute
   '/api/public/bot/transfers': typeof ApiPublicBotTransfersRoute
 }
 export interface FileRoutesByTo {
@@ -146,6 +153,7 @@ export interface FileRoutesByTo {
   '/api/public/bot/events': typeof ApiPublicBotEventsRoute
   '/api/public/bot/fills': typeof ApiPublicBotFillsRoute
   '/api/public/bot/intents': typeof ApiPublicBotIntentsRoute
+  '/api/public/bot/status': typeof ApiPublicBotStatusRoute
   '/api/public/bot/transfers': typeof ApiPublicBotTransfersRoute
 }
 export interface FileRoutesById {
@@ -166,6 +174,7 @@ export interface FileRoutesById {
   '/api/public/bot/events': typeof ApiPublicBotEventsRoute
   '/api/public/bot/fills': typeof ApiPublicBotFillsRoute
   '/api/public/bot/intents': typeof ApiPublicBotIntentsRoute
+  '/api/public/bot/status': typeof ApiPublicBotStatusRoute
   '/api/public/bot/transfers': typeof ApiPublicBotTransfersRoute
 }
 export interface FileRouteTypes {
@@ -186,6 +195,7 @@ export interface FileRouteTypes {
     | '/api/public/bot/events'
     | '/api/public/bot/fills'
     | '/api/public/bot/intents'
+    | '/api/public/bot/status'
     | '/api/public/bot/transfers'
   fileRoutesByTo: FileRoutesByTo
   to:
@@ -204,6 +214,7 @@ export interface FileRouteTypes {
     | '/api/public/bot/events'
     | '/api/public/bot/fills'
     | '/api/public/bot/intents'
+    | '/api/public/bot/status'
     | '/api/public/bot/transfers'
   id:
     | '__root__'
@@ -223,6 +234,7 @@ export interface FileRouteTypes {
     | '/api/public/bot/events'
     | '/api/public/bot/fills'
     | '/api/public/bot/intents'
+    | '/api/public/bot/status'
     | '/api/public/bot/transfers'
   fileRoutesById: FileRoutesById
 }
@@ -234,6 +246,7 @@ export interface RootRouteChildren {
   ApiPublicBotEventsRoute: typeof ApiPublicBotEventsRoute
   ApiPublicBotFillsRoute: typeof ApiPublicBotFillsRoute
   ApiPublicBotIntentsRoute: typeof ApiPublicBotIntentsRoute
+  ApiPublicBotStatusRoute: typeof ApiPublicBotStatusRoute
   ApiPublicBotTransfersRoute: typeof ApiPublicBotTransfersRoute
 }
 
@@ -330,6 +343,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiPublicBotTransfersRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/public/bot/status': {
+      id: '/api/public/bot/status'
+      path: '/api/public/bot/status'
+      fullPath: '/api/public/bot/status'
+      preLoaderRoute: typeof ApiPublicBotStatusRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/api/public/bot/intents': {
       id: '/api/public/bot/intents'
       path: '/api/public/bot/intents'
@@ -396,6 +416,7 @@ const rootRouteChildren: RootRouteChildren = {
   ApiPublicBotEventsRoute: ApiPublicBotEventsRoute,
   ApiPublicBotFillsRoute: ApiPublicBotFillsRoute,
   ApiPublicBotIntentsRoute: ApiPublicBotIntentsRoute,
+  ApiPublicBotStatusRoute: ApiPublicBotStatusRoute,
   ApiPublicBotTransfersRoute: ApiPublicBotTransfersRoute,
 }
 export const routeTree = rootRouteImport
