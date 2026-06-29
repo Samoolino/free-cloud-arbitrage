@@ -21,9 +21,9 @@ export const Route = createFileRoute("/api/public/bot/status")({
             supabaseAdmin.from("trade_intents").select("id, ack_at, status")
               .eq("user_id", userId).not("ack_at", "is", null)
               .order("ack_at", { ascending: false }).limit(1).maybeSingle(),
-            supabaseAdmin.from("trades").select("id, created_at, realized_pnl_usd")
+            supabaseAdmin.from("trades").select("id, executed_at, realized_pnl_usd")
               .eq("user_id", userId).eq("paper", false)
-              .order("created_at", { ascending: false }).limit(1).maybeSingle(),
+              .order("executed_at", { ascending: false }).limit(1).maybeSingle(),
             supabaseAdmin.from("system_events").select("created_at, level, source, message")
               .eq("user_id", userId).order("created_at", { ascending: false }).limit(1).maybeSingle(),
             supabaseAdmin.from("system_events").select("created_at, message, context")
@@ -46,7 +46,7 @@ export const Route = createFileRoute("/api/public/bot/status")({
               online: executor_online,
               queued_intents: queued.count ?? 0,
               last_ack_at: lastAck.data?.ack_at ?? null,
-              last_fill_at: lastFill.data?.created_at ?? null,
+              last_fill_at: lastFill.data?.executed_at ?? null,
               last_event: lastEvent.data ?? null,
               last_error: lastErr.data ?? null,
               dry_run: cfg.data?.dry_run ?? null,
