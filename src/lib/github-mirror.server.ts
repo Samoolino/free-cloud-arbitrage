@@ -21,11 +21,25 @@ const localAuthed = import.meta.glob("/src/routes/_authenticated/**/*", {
   import: "default",
   eager: true,
 }) as Record<string, string>;
+// Vite's import.meta.glob skips dotfiles by default; pull them in explicitly
+// so files like python_worker/.env (which the repo tracks as a template) are
+// part of the integrity surface.
+const localDotPython = import.meta.glob("/python_worker/**/.*", {
+  query: "?raw",
+  import: "default",
+  eager: true,
+}) as Record<string, string>;
+
+// Build-time noise that lives under mirrored paths but should never be
+// compared (Python bytecode caches, OS metadata).
+const NOISE_RE = /(?:^|\/)(?:__pycache__\/|\.DS_Store$|.*\.pyc$|.*\.pyo$)/;
+function isNoise(path: string): boolean { return NOISE_RE.test(path); }
 
 const LOCAL_FILES: Record<string, string> = {};
-for (const [k, v] of Object.entries({ ...localPython, ...localAuthed })) {
+for (const [k, v] of Object.entries({ ...localPython, ...localDotPython, ...localAuthed })) {
   // strip leading slash so keys match GitHub tree paths
-  LOCAL_FILES[k.replace(/^\//, "")] = v;
+  const p = k.replace(/^\//, "");
+  if (!isNoise(p)) LOCAL_FILES[p] = v;
 }
 
 /** Git's blob SHA1 = sha1("blob <byteLen>\0" + content). */
@@ -103,7 +117,7 @@ export async function compareWithGitHub(): Promise<MirrorReport> {
   const head = await fetchHeadCommit();
   const tree = await fetchRepoTree(head.sha);
   const remote = new Map<string, string>();
-  for (const e of tree) if (isMirrored(e.path)) remote.set(e.path, e.sha);
+  for (const e of tree) if (isMirrored(e.path) && !isNoise(e.path)) remote.set(e.path, e.sha);
 
   const localKeys = new Set(Object.keys(LOCAL_FILES));
   const allPaths = new Set<string>([...remote.keys(), ...localKeys]);
