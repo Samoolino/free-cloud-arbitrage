@@ -1,11 +1,11 @@
 import { createFileRoute, useRouter } from "@tanstack/react-router";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useServerFn } from "@tanstack/react-start";
 import { useMutation, useQuery } from "@tanstack/react-query";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { RefreshCw, GitBranch, Download, CheckCircle2, AlertTriangle } from "lucide-react";
+import { RefreshCw, GitBranch, Download, CheckCircle2, AlertTriangle, Copy } from "lucide-react";
 import { checkMirrorIntegrity, fetchMirrorBundle, lastMirrorCheck } from "@/lib/mirror.functions";
 
 export const Route = createFileRoute("/_authenticated/sync")({ component: SyncPage });
@@ -25,6 +25,28 @@ function SyncPage() {
 
   const report = check.data;
   const [copied, setCopied] = useState<string | null>(null);
+
+  // Automatic integrity check on mount — gives instant pass/fail for HEAD.
+  useEffect(() => {
+    if (!check.isPending && !check.data) check.mutate();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  // When drift exists, eagerly fetch raw file contents so the per-file Copy
+  // button is wired without a second click.
+  useEffect(() => {
+    if (report && !report.in_sync && !bundle.data && !bundle.isPending) bundle.mutate();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [report?.head_sha, report?.in_sync]);
+
+  const bundleByPath = new Map(bundle.data?.patch.files.map((f) => [f.path, f] as const) ?? []);
+
+  async function copyFile(path: string) {
+    const f = bundleByPath.get(path);
+    if (!f) return;
+    await navigator.clipboard.writeText(f.content);
+    setCopied(path); setTimeout(() => setCopied(null), 1500);
+  }
 
   return (
     <div className="space-y-6 max-w-4xl">
