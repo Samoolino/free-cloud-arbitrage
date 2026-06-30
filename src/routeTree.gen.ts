@@ -22,6 +22,7 @@ import { Route as AuthenticatedLogsRouteImport } from './routes/_authenticated/l
 import { Route as AuthenticatedExchangesRouteImport } from './routes/_authenticated/exchanges'
 import { Route as AuthenticatedDashboardRouteImport } from './routes/_authenticated/dashboard'
 import { Route as AuthenticatedBotRouteImport } from './routes/_authenticated/bot'
+import { Route as ApiPublicGithubWebhookRouteImport } from './routes/api/public/github/webhook'
 import { Route as ApiPublicBotTransfersRouteImport } from './routes/api/public/bot/transfers'
 import { Route as ApiPublicBotStatusRouteImport } from './routes/api/public/bot/status'
 import { Route as ApiPublicBotIntentsRouteImport } from './routes/api/public/bot/intents'
@@ -93,6 +94,11 @@ const AuthenticatedBotRoute = AuthenticatedBotRouteImport.update({
   path: '/bot',
   getParentRoute: () => AuthenticatedRouteRoute,
 } as any)
+const ApiPublicGithubWebhookRoute = ApiPublicGithubWebhookRouteImport.update({
+  id: '/api/public/github/webhook',
+  path: '/api/public/github/webhook',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ApiPublicBotTransfersRoute = ApiPublicBotTransfersRouteImport.update({
   id: '/api/public/bot/transfers',
   path: '/api/public/bot/transfers',
@@ -143,6 +149,7 @@ export interface FileRoutesByFullPath {
   '/api/public/bot/intents': typeof ApiPublicBotIntentsRoute
   '/api/public/bot/status': typeof ApiPublicBotStatusRoute
   '/api/public/bot/transfers': typeof ApiPublicBotTransfersRoute
+  '/api/public/github/webhook': typeof ApiPublicGithubWebhookRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
@@ -163,6 +170,7 @@ export interface FileRoutesByTo {
   '/api/public/bot/intents': typeof ApiPublicBotIntentsRoute
   '/api/public/bot/status': typeof ApiPublicBotStatusRoute
   '/api/public/bot/transfers': typeof ApiPublicBotTransfersRoute
+  '/api/public/github/webhook': typeof ApiPublicGithubWebhookRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -185,6 +193,7 @@ export interface FileRoutesById {
   '/api/public/bot/intents': typeof ApiPublicBotIntentsRoute
   '/api/public/bot/status': typeof ApiPublicBotStatusRoute
   '/api/public/bot/transfers': typeof ApiPublicBotTransfersRoute
+  '/api/public/github/webhook': typeof ApiPublicGithubWebhookRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -207,6 +216,7 @@ export interface FileRouteTypes {
     | '/api/public/bot/intents'
     | '/api/public/bot/status'
     | '/api/public/bot/transfers'
+    | '/api/public/github/webhook'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
@@ -227,6 +237,7 @@ export interface FileRouteTypes {
     | '/api/public/bot/intents'
     | '/api/public/bot/status'
     | '/api/public/bot/transfers'
+    | '/api/public/github/webhook'
   id:
     | '__root__'
     | '/'
@@ -248,6 +259,7 @@ export interface FileRouteTypes {
     | '/api/public/bot/intents'
     | '/api/public/bot/status'
     | '/api/public/bot/transfers'
+    | '/api/public/github/webhook'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -260,6 +272,7 @@ export interface RootRouteChildren {
   ApiPublicBotIntentsRoute: typeof ApiPublicBotIntentsRoute
   ApiPublicBotStatusRoute: typeof ApiPublicBotStatusRoute
   ApiPublicBotTransfersRoute: typeof ApiPublicBotTransfersRoute
+  ApiPublicGithubWebhookRoute: typeof ApiPublicGithubWebhookRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -355,6 +368,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedBotRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
+    '/api/public/github/webhook': {
+      id: '/api/public/github/webhook'
+      path: '/api/public/github/webhook'
+      fullPath: '/api/public/github/webhook'
+      preLoaderRoute: typeof ApiPublicGithubWebhookRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/api/public/bot/transfers': {
       id: '/api/public/bot/transfers'
       path: '/api/public/bot/transfers'
@@ -439,17 +459,8 @@ const rootRouteChildren: RootRouteChildren = {
   ApiPublicBotIntentsRoute: ApiPublicBotIntentsRoute,
   ApiPublicBotStatusRoute: ApiPublicBotStatusRoute,
   ApiPublicBotTransfersRoute: ApiPublicBotTransfersRoute,
+  ApiPublicGithubWebhookRoute: ApiPublicGithubWebhookRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
   ._addFileTypes<FileRouteTypes>()
-
-import type { getRouter } from './router.tsx'
-import type { startInstance } from './start.ts'
-declare module '@tanstack/react-start' {
-  interface Register {
-    ssr: true
-    router: Awaited<ReturnType<typeof getRouter>>
-    config: Awaited<ReturnType<typeof startInstance.getOptions>>
-  }
-}

@@ -1,11 +1,11 @@
 import { createFileRoute, useRouter } from "@tanstack/react-router";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useServerFn } from "@tanstack/react-start";
 import { useMutation, useQuery } from "@tanstack/react-query";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { RefreshCw, GitBranch, Download, CheckCircle2, AlertTriangle } from "lucide-react";
+import { RefreshCw, GitBranch, Download, CheckCircle2, AlertTriangle, Copy } from "lucide-react";
 import { checkMirrorIntegrity, fetchMirrorBundle, lastMirrorCheck } from "@/lib/mirror.functions";
 
 export const Route = createFileRoute("/_authenticated/sync")({ component: SyncPage });
@@ -25,6 +25,28 @@ function SyncPage() {
 
   const report = check.data;
   const [copied, setCopied] = useState<string | null>(null);
+
+  // Automatic integrity check on mount — gives instant pass/fail for HEAD.
+  useEffect(() => {
+    if (!check.isPending && !check.data) check.mutate();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  // When drift exists, eagerly fetch raw file contents so the per-file Copy
+  // button is wired without a second click.
+  useEffect(() => {
+    if (report && !report.in_sync && !bundle.data && !bundle.isPending) bundle.mutate();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [report?.head_sha, report?.in_sync]);
+
+  const bundleByPath = new Map(bundle.data?.patch.files.map((f) => [f.path, f] as const) ?? []);
+
+  async function copyFile(path: string) {
+    const f = bundleByPath.get(path);
+    if (!f) return;
+    await navigator.clipboard.writeText(f.content);
+    setCopied(path); setTimeout(() => setCopied(null), 1500);
+  }
 
   return (
     <div className="space-y-6 max-w-4xl">
@@ -80,12 +102,28 @@ function SyncPage() {
               <Stat label="Missing" value={report.missing_local + report.missing_remote} tone="muted" />
             </div>
             <div className="border rounded max-h-96 overflow-y-auto divide-y">
-              {report.diffs.filter((d) => d.status !== "match").map((d) => (
-                <div key={d.path} className="p-2 flex items-center justify-between gap-2 text-xs">
-                  <code className="truncate">{d.path}</code>
-                  <Badge variant={d.status === "mismatch" ? "destructive" : "outline"}>{d.status}</Badge>
-                </div>
-              ))}
+              {report.diffs.filter((d) => d.status !== "match").map((d) => {
+                const has = bundleByPath.has(d.path);
+                return (
+                  <div key={d.path} className="p-2 flex flex-col gap-1 text-xs">
+                    <div className="flex items-center justify-between gap-2">
+                      <code className="truncate">{d.path}</code>
+                      <div className="flex items-center gap-2 shrink-0">
+                        <Badge variant={d.status === "mismatch" ? "destructive" : "outline"}>{d.status}</Badge>
+                        <Button size="sm" variant="ghost" disabled={!has}
+                          onClick={() => copyFile(d.path)} title={has ? "Copy remote contents" : "Fetch bundle first"}>
+                          <Copy className="h-3 w-3 mr-1" />
+                          {copied === d.path ? "Copied" : "Copy"}
+                        </Button>
+                      </div>
+                    </div>
+                    <div className="flex gap-3 font-mono text-[10px] text-muted-foreground">
+                      <span>local: {d.local_sha?.slice(0, 12) ?? "—"}</span>
+                      <span>remote: {d.remote_sha?.slice(0, 12) ?? "—"}</span>
+                    </div>
+                  </div>
+                );
+              })}
               {report.in_sync && (
                 <div className="p-3 text-center text-xs text-muted-foreground">
                   All {report.matches} mirrored files match commit {report.head_sha.slice(0, 7)}.

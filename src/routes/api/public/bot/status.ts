@@ -52,11 +52,25 @@ export const Route = createFileRoute("/api/public/bot/status")({
               dry_run: cfg.data?.dry_run ?? null,
               paper_trading: cfg.data?.paper_trading ?? null,
             },
-            mirror: {
-              last_check_at: lastMirror.data?.created_at ?? null,
-              last_message: lastMirror.data?.message ?? null,
-              context: lastMirror.data?.context ?? null,
-            },
+            mirror: (() => {
+              const ctx = (lastMirror.data?.context ?? null) as null | {
+                head_sha?: string; matches?: number; mismatches?: number;
+                missing_local?: number; missing_remote?: number;
+              };
+              const mismatches = ctx?.mismatches ?? 0;
+              const missing = (ctx?.missing_local ?? 0) + (ctx?.missing_remote ?? 0);
+              return {
+                last_check_at: lastMirror.data?.created_at ?? null,
+                last_message: lastMirror.data?.message ?? null,
+                head_sha: ctx?.head_sha ?? null,
+                matches: ctx?.matches ?? null,
+                mismatches,
+                missing_local: ctx?.missing_local ?? null,
+                missing_remote: ctx?.missing_remote ?? null,
+                in_sync: ctx ? mismatches === 0 && missing === 0 : null,
+                context: ctx,
+              };
+            })(),
           });
         } catch (e) {
           if (e instanceof Response) return e;
