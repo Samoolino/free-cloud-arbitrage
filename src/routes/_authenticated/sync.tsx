@@ -102,12 +102,28 @@ function SyncPage() {
               <Stat label="Missing" value={report.missing_local + report.missing_remote} tone="muted" />
             </div>
             <div className="border rounded max-h-96 overflow-y-auto divide-y">
-              {report.diffs.filter((d) => d.status !== "match").map((d) => (
-                <div key={d.path} className="p-2 flex items-center justify-between gap-2 text-xs">
-                  <code className="truncate">{d.path}</code>
-                  <Badge variant={d.status === "mismatch" ? "destructive" : "outline"}>{d.status}</Badge>
-                </div>
-              ))}
+              {report.diffs.filter((d) => d.status !== "match").map((d) => {
+                const has = bundleByPath.has(d.path);
+                return (
+                  <div key={d.path} className="p-2 flex flex-col gap-1 text-xs">
+                    <div className="flex items-center justify-between gap-2">
+                      <code className="truncate">{d.path}</code>
+                      <div className="flex items-center gap-2 shrink-0">
+                        <Badge variant={d.status === "mismatch" ? "destructive" : "outline"}>{d.status}</Badge>
+                        <Button size="sm" variant="ghost" disabled={!has}
+                          onClick={() => copyFile(d.path)} title={has ? "Copy remote contents" : "Fetch bundle first"}>
+                          <Copy className="h-3 w-3 mr-1" />
+                          {copied === d.path ? "Copied" : "Copy"}
+                        </Button>
+                      </div>
+                    </div>
+                    <div className="flex gap-3 font-mono text-[10px] text-muted-foreground">
+                      <span>local: {d.local_sha?.slice(0, 12) ?? "—"}</span>
+                      <span>remote: {d.remote_sha?.slice(0, 12) ?? "—"}</span>
+                    </div>
+                  </div>
+                );
+              })}
               {report.in_sync && (
                 <div className="p-3 text-center text-xs text-muted-foreground">
                   All {report.matches} mirrored files match commit {report.head_sha.slice(0, 7)}.
