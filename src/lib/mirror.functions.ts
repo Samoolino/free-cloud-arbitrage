@@ -51,3 +51,56 @@ export const lastMirrorCheck = createServerFn({ method: "GET" })
     if (r.error) throw r.error;
     return r.data;
   });
+
+/** Send a signed sample push payload to our own webhook endpoint and report
+ *  whether HMAC verification + integrity re-check succeeded. Uses the same
+ *  GITHUB_WEBHOOK_SECRET the real webhook is configured with. */
+export const testGithubWebhook = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .handler(async () => {
+    const secret = process.env.GITHUB_WEBHOOK_SECRET;
+    if (!secret) {
+      return { ok: false, error: "GITHUB_WEBHOOK_SECRET not configured" };
+    }
+    const { fetchHeadCommit, MIRROR_REPO, MIRROR_BRANCH } = await import(
+      "@/lib/github-mirror.server"
+    );
+    const head = await fetchHeadCommit();
+    const payload = {
+      ref: `refs/heads/${MIRROR_BRANCH}`,
+      after: head.sha,
+      repository: { full_name: MIRROR_REPO },
+      _test: true,
+    };
+    const raw = JSON.stringify(payload);
+    const { createHmac } = await import("node:crypto");
+    const sig = "sha256=" + createHmac("sha256", secret).update(raw).digest("hex");
+
+    const { getRequest } = await import("@tanstack/react-start/server");
+    const req = getRequest();
+    const origin = new URL(req.url).origin;
+    const url = `${origin}/api/public/github/webhook`;
+    const started = Date.now();
+    const r = await fetch(url, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "X-GitHub-Event": "push",
+        "X-GitHub-Delivery": `test-${Date.now()}`,
+        "X-Hub-Signature-256": sig,
+      },
+      body: raw,
+    });
+    const took_ms = Date.now() - started;
+    const text = await r.text();
+    let body: unknown = text;
+    try { body = JSON.parse(text); } catch { /* leave as text */ }
+    return {
+      ok: r.ok,
+      status: r.status,
+      signature_valid: r.status !== 401,
+      took_ms,
+      url,
+      response: body,
+    };
+  });
