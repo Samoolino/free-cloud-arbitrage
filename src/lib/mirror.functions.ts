@@ -93,8 +93,8 @@ export const testGithubWebhook = createServerFn({ method: "POST" })
     });
     const took_ms = Date.now() - started;
     const text = await r.text();
-    let body: unknown = text;
-    try { body = JSON.parse(text); } catch { /* leave as text */ }
+    let body: Record<string, unknown> | string = text;
+    try { body = JSON.parse(text) as Record<string, unknown>; } catch { /* keep text */ }
     return {
       ok: r.ok,
       status: r.status,
