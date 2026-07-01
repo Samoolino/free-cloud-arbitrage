@@ -29,6 +29,15 @@ const localDotPython = import.meta.glob("/python_worker/**/.*", {
   import: "default",
   eager: true,
 }) as Record<string, string>;
+// Vite's `**/.*` pattern doesn't include dotfiles that sit at the FIRST
+// directory level (e.g. `python_worker/.env`) because `**/` insists on at
+// least one intermediate segment. Add an explicit top-level dotfile glob
+// so files like `.env`, `.gitignore`, `.dockerignore` are covered.
+const localTopDotPython = import.meta.glob("/python_worker/.*", {
+  query: "?raw",
+  import: "default",
+  eager: true,
+}) as Record<string, string>;
 
 // Build-time noise that lives under mirrored paths but should never be
 // compared (Python bytecode caches, OS metadata).
@@ -36,7 +45,12 @@ const NOISE_RE = /(?:^|\/)(?:__pycache__\/|\.DS_Store$|.*\.pyc$|.*\.pyo$)/;
 function isNoise(path: string): boolean { return NOISE_RE.test(path); }
 
 const LOCAL_FILES: Record<string, string> = {};
-for (const [k, v] of Object.entries({ ...localPython, ...localDotPython, ...localAuthed })) {
+for (const [k, v] of Object.entries({
+  ...localPython,
+  ...localDotPython,
+  ...localTopDotPython,
+  ...localAuthed,
+})) {
   // strip leading slash so keys match GitHub tree paths
   const p = k.replace(/^\//, "");
   if (!isNoise(p)) LOCAL_FILES[p] = v;
