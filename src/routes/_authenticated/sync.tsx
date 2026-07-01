@@ -5,8 +5,8 @@ import { useMutation, useQuery } from "@tanstack/react-query";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { RefreshCw, GitBranch, Download, CheckCircle2, AlertTriangle, Copy } from "lucide-react";
-import { checkMirrorIntegrity, fetchMirrorBundle, lastMirrorCheck } from "@/lib/mirror.functions";
+import { RefreshCw, GitBranch, Download, CheckCircle2, AlertTriangle, Copy, Webhook } from "lucide-react";
+import { checkMirrorIntegrity, fetchMirrorBundle, lastMirrorCheck, testGithubWebhook } from "@/lib/mirror.functions";
 
 export const Route = createFileRoute("/_authenticated/sync")({ component: SyncPage });
 
@@ -15,6 +15,7 @@ function SyncPage() {
   const runCheck = useServerFn(checkMirrorIntegrity);
   const runBundle = useServerFn(fetchMirrorBundle);
   const getLast = useServerFn(lastMirrorCheck);
+  const runWebhookTest = useServerFn(testGithubWebhook);
 
   const last = useQuery({ queryKey: ["mirror-last"], queryFn: () => getLast() });
   const check = useMutation({
@@ -22,6 +23,7 @@ function SyncPage() {
     onSuccess: () => { last.refetch(); router.invalidate(); },
   });
   const bundle = useMutation({ mutationFn: () => runBundle({ data: {} }) });
+  const webhookTest = useMutation({ mutationFn: () => runWebhookTest() });
 
   const report = check.data;
   const [copied, setCopied] = useState<string | null>(null);
@@ -164,6 +166,48 @@ function SyncPage() {
           </CardContent>
         </Card>
       )}
+
+      <Card>
+        <CardHeader className="flex flex-row items-center justify-between">
+          <CardTitle className="text-base flex items-center gap-2">
+            <Webhook className="h-4 w-4" /> Webhook test
+          </CardTitle>
+          <Button size="sm" variant="secondary" onClick={() => webhookTest.mutate()} disabled={webhookTest.isPending}>
+            {webhookTest.isPending ? "Sending…" : "Send sample push"}
+          </Button>
+        </CardHeader>
+        <CardContent className="text-xs space-y-2">
+          <p className="text-muted-foreground">
+            Signs a sample push payload with <code>GITHUB_WEBHOOK_SECRET</code> and POSTs it to
+            <code> /api/public/github/webhook</code>. Confirms HMAC verification and re-runs the
+            integrity check end-to-end.
+          </p>
+          {webhookTest.data && (
+            <div className="space-y-1">
+              <div className="flex items-center gap-2">
+                {webhookTest.data.ok ? (
+                  <Badge className="bg-emerald-500/15 text-emerald-500 border-emerald-500/30">HTTP {webhookTest.data.status}</Badge>
+                ) : (
+                  <Badge variant="destructive">HTTP {webhookTest.data.status ?? "—"}</Badge>
+                )}
+                <Badge variant="outline">
+                  {"signature_valid" in webhookTest.data && webhookTest.data.signature_valid
+                    ? "signature ✓" : "signature ✗"}
+                </Badge>
+                {"took_ms" in webhookTest.data && (
+                  <span className="text-muted-foreground">{webhookTest.data.took_ms}ms</span>
+                )}
+              </div>
+              <pre className="bg-muted/40 p-2 rounded max-h-56 overflow-auto text-[11px]">
+{typeof webhookTest.data.response === "string" ? webhookTest.data.response : JSON.stringify(webhookTest.data, null, 2)}
+              </pre>
+            </div>
+          )}
+          {webhookTest.error && (
+            <div className="text-destructive">{(webhookTest.error as Error).message}</div>
+          )}
+        </CardContent>
+      </Card>
     </div>
   );
 }
