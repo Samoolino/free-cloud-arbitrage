@@ -18,6 +18,7 @@ import { Route as AuthenticatedSyncRouteImport } from './routes/_authenticated/s
 import { Route as AuthenticatedStrategyRouteImport } from './routes/_authenticated/strategy'
 import { Route as AuthenticatedSessionsRouteImport } from './routes/_authenticated/sessions'
 import { Route as AuthenticatedScannerRouteImport } from './routes/_authenticated/scanner'
+import { Route as AuthenticatedOperationsRouteImport } from './routes/_authenticated/operations'
 import { Route as AuthenticatedLogsRouteImport } from './routes/_authenticated/logs'
 import { Route as AuthenticatedExchangesRouteImport } from './routes/_authenticated/exchanges'
 import { Route as AuthenticatedDashboardRouteImport } from './routes/_authenticated/dashboard'
@@ -72,6 +73,11 @@ const AuthenticatedSessionsRoute = AuthenticatedSessionsRouteImport.update({
 const AuthenticatedScannerRoute = AuthenticatedScannerRouteImport.update({
   id: '/scanner',
   path: '/scanner',
+  getParentRoute: () => AuthenticatedRouteRoute,
+} as any)
+const AuthenticatedOperationsRoute = AuthenticatedOperationsRouteImport.update({
+  id: '/operations',
+  path: '/operations',
   getParentRoute: () => AuthenticatedRouteRoute,
 } as any)
 const AuthenticatedLogsRoute = AuthenticatedLogsRouteImport.update({
@@ -137,6 +143,7 @@ export interface FileRoutesByFullPath {
   '/dashboard': typeof AuthenticatedDashboardRoute
   '/exchanges': typeof AuthenticatedExchangesRoute
   '/logs': typeof AuthenticatedLogsRoute
+  '/operations': typeof AuthenticatedOperationsRoute
   '/scanner': typeof AuthenticatedScannerRoute
   '/sessions': typeof AuthenticatedSessionsRoute
   '/strategy': typeof AuthenticatedStrategyRoute
@@ -158,6 +165,7 @@ export interface FileRoutesByTo {
   '/dashboard': typeof AuthenticatedDashboardRoute
   '/exchanges': typeof AuthenticatedExchangesRoute
   '/logs': typeof AuthenticatedLogsRoute
+  '/operations': typeof AuthenticatedOperationsRoute
   '/scanner': typeof AuthenticatedScannerRoute
   '/sessions': typeof AuthenticatedSessionsRoute
   '/strategy': typeof AuthenticatedStrategyRoute
@@ -181,6 +189,7 @@ export interface FileRoutesById {
   '/_authenticated/dashboard': typeof AuthenticatedDashboardRoute
   '/_authenticated/exchanges': typeof AuthenticatedExchangesRoute
   '/_authenticated/logs': typeof AuthenticatedLogsRoute
+  '/_authenticated/operations': typeof AuthenticatedOperationsRoute
   '/_authenticated/scanner': typeof AuthenticatedScannerRoute
   '/_authenticated/sessions': typeof AuthenticatedSessionsRoute
   '/_authenticated/strategy': typeof AuthenticatedStrategyRoute
@@ -204,6 +213,7 @@ export interface FileRouteTypes {
     | '/dashboard'
     | '/exchanges'
     | '/logs'
+    | '/operations'
     | '/scanner'
     | '/sessions'
     | '/strategy'
@@ -225,6 +235,7 @@ export interface FileRouteTypes {
     | '/dashboard'
     | '/exchanges'
     | '/logs'
+    | '/operations'
     | '/scanner'
     | '/sessions'
     | '/strategy'
@@ -247,6 +258,7 @@ export interface FileRouteTypes {
     | '/_authenticated/dashboard'
     | '/_authenticated/exchanges'
     | '/_authenticated/logs'
+    | '/_authenticated/operations'
     | '/_authenticated/scanner'
     | '/_authenticated/sessions'
     | '/_authenticated/strategy'
@@ -340,6 +352,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedScannerRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
+    '/_authenticated/operations': {
+      id: '/_authenticated/operations'
+      path: '/operations'
+      fullPath: '/operations'
+      preLoaderRoute: typeof AuthenticatedOperationsRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
     '/_authenticated/logs': {
       id: '/_authenticated/logs'
       path: '/logs'
@@ -425,6 +444,7 @@ interface AuthenticatedRouteRouteChildren {
   AuthenticatedDashboardRoute: typeof AuthenticatedDashboardRoute
   AuthenticatedExchangesRoute: typeof AuthenticatedExchangesRoute
   AuthenticatedLogsRoute: typeof AuthenticatedLogsRoute
+  AuthenticatedOperationsRoute: typeof AuthenticatedOperationsRoute
   AuthenticatedScannerRoute: typeof AuthenticatedScannerRoute
   AuthenticatedSessionsRoute: typeof AuthenticatedSessionsRoute
   AuthenticatedStrategyRoute: typeof AuthenticatedStrategyRoute
@@ -438,6 +458,7 @@ const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
   AuthenticatedDashboardRoute: AuthenticatedDashboardRoute,
   AuthenticatedExchangesRoute: AuthenticatedExchangesRoute,
   AuthenticatedLogsRoute: AuthenticatedLogsRoute,
+  AuthenticatedOperationsRoute: AuthenticatedOperationsRoute,
   AuthenticatedScannerRoute: AuthenticatedScannerRoute,
   AuthenticatedSessionsRoute: AuthenticatedSessionsRoute,
   AuthenticatedStrategyRoute: AuthenticatedStrategyRoute,
@@ -464,13 +485,3 @@ const rootRouteChildren: RootRouteChildren = {
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
   ._addFileTypes<FileRouteTypes>()
-
-import type { getRouter } from './router.tsx'
-import type { startInstance } from './start.ts'
-declare module '@tanstack/react-start' {
-  interface Register {
-    ssr: true
-    router: Awaited<ReturnType<typeof getRouter>>
-    config: Awaited<ReturnType<typeof startInstance.getOptions>>
-  }
-}
