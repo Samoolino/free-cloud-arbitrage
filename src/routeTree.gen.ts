@@ -31,6 +31,7 @@ import { Route as ApiPublicBotIntentsRouteImport } from './routes/api/public/bot
 import { Route as ApiPublicBotFillsRouteImport } from './routes/api/public/bot/fills'
 import { Route as ApiPublicBotEventsRouteImport } from './routes/api/public/bot/events'
 import { Route as ApiPublicBotConfigRouteImport } from './routes/api/public/bot/config'
+import { Route as ApiPublicBotBalancesRouteImport } from './routes/api/public/bot/balances'
 
 const AuthRoute = AuthRouteImport.update({
   id: '/auth',
@@ -141,6 +142,11 @@ const ApiPublicBotConfigRoute = ApiPublicBotConfigRouteImport.update({
   path: '/api/public/bot/config',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ApiPublicBotBalancesRoute = ApiPublicBotBalancesRouteImport.update({
+  id: '/api/public/bot/balances',
+  path: '/api/public/bot/balances',
+  getParentRoute: () => rootRouteImport,
+} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
@@ -157,6 +163,7 @@ export interface FileRoutesByFullPath {
   '/sync': typeof AuthenticatedSyncRoute
   '/trades': typeof AuthenticatedTradesRoute
   '/transfers': typeof AuthenticatedTransfersRoute
+  '/api/public/bot/balances': typeof ApiPublicBotBalancesRoute
   '/api/public/bot/config': typeof ApiPublicBotConfigRoute
   '/api/public/bot/events': typeof ApiPublicBotEventsRoute
   '/api/public/bot/fills': typeof ApiPublicBotFillsRoute
@@ -180,6 +187,7 @@ export interface FileRoutesByTo {
   '/sync': typeof AuthenticatedSyncRoute
   '/trades': typeof AuthenticatedTradesRoute
   '/transfers': typeof AuthenticatedTransfersRoute
+  '/api/public/bot/balances': typeof ApiPublicBotBalancesRoute
   '/api/public/bot/config': typeof ApiPublicBotConfigRoute
   '/api/public/bot/events': typeof ApiPublicBotEventsRoute
   '/api/public/bot/fills': typeof ApiPublicBotFillsRoute
@@ -205,6 +213,7 @@ export interface FileRoutesById {
   '/_authenticated/sync': typeof AuthenticatedSyncRoute
   '/_authenticated/trades': typeof AuthenticatedTradesRoute
   '/_authenticated/transfers': typeof AuthenticatedTransfersRoute
+  '/api/public/bot/balances': typeof ApiPublicBotBalancesRoute
   '/api/public/bot/config': typeof ApiPublicBotConfigRoute
   '/api/public/bot/events': typeof ApiPublicBotEventsRoute
   '/api/public/bot/fills': typeof ApiPublicBotFillsRoute
@@ -230,6 +239,7 @@ export interface FileRouteTypes {
     | '/sync'
     | '/trades'
     | '/transfers'
+    | '/api/public/bot/balances'
     | '/api/public/bot/config'
     | '/api/public/bot/events'
     | '/api/public/bot/fills'
@@ -253,6 +263,7 @@ export interface FileRouteTypes {
     | '/sync'
     | '/trades'
     | '/transfers'
+    | '/api/public/bot/balances'
     | '/api/public/bot/config'
     | '/api/public/bot/events'
     | '/api/public/bot/fills'
@@ -277,6 +288,7 @@ export interface FileRouteTypes {
     | '/_authenticated/sync'
     | '/_authenticated/trades'
     | '/_authenticated/transfers'
+    | '/api/public/bot/balances'
     | '/api/public/bot/config'
     | '/api/public/bot/events'
     | '/api/public/bot/fills'
@@ -290,6 +302,7 @@ export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   AuthenticatedRouteRoute: typeof AuthenticatedRouteRouteWithChildren
   AuthRoute: typeof AuthRoute
+  ApiPublicBotBalancesRoute: typeof ApiPublicBotBalancesRoute
   ApiPublicBotConfigRoute: typeof ApiPublicBotConfigRoute
   ApiPublicBotEventsRoute: typeof ApiPublicBotEventsRoute
   ApiPublicBotFillsRoute: typeof ApiPublicBotFillsRoute
@@ -455,6 +468,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiPublicBotConfigRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/public/bot/balances': {
+      id: '/api/public/bot/balances'
+      path: '/api/public/bot/balances'
+      fullPath: '/api/public/bot/balances'
+      preLoaderRoute: typeof ApiPublicBotBalancesRouteImport
+      parentRoute: typeof rootRouteImport
+    }
   }
 }
 
@@ -495,6 +515,7 @@ const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   AuthenticatedRouteRoute: AuthenticatedRouteRouteWithChildren,
   AuthRoute: AuthRoute,
+  ApiPublicBotBalancesRoute: ApiPublicBotBalancesRoute,
   ApiPublicBotConfigRoute: ApiPublicBotConfigRoute,
   ApiPublicBotEventsRoute: ApiPublicBotEventsRoute,
   ApiPublicBotFillsRoute: ApiPublicBotFillsRoute,
