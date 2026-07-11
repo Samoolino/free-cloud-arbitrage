@@ -23,6 +23,7 @@ import { Route as AuthenticatedLogsRouteImport } from './routes/_authenticated/l
 import { Route as AuthenticatedExchangesRouteImport } from './routes/_authenticated/exchanges'
 import { Route as AuthenticatedDashboardRouteImport } from './routes/_authenticated/dashboard'
 import { Route as AuthenticatedBotRouteImport } from './routes/_authenticated/bot'
+import { Route as AuthenticatedBalancesRouteImport } from './routes/_authenticated/balances'
 import { Route as ApiPublicGithubWebhookRouteImport } from './routes/api/public/github/webhook'
 import { Route as ApiPublicBotTransfersRouteImport } from './routes/api/public/bot/transfers'
 import { Route as ApiPublicBotStatusRouteImport } from './routes/api/public/bot/status'
@@ -100,6 +101,11 @@ const AuthenticatedBotRoute = AuthenticatedBotRouteImport.update({
   path: '/bot',
   getParentRoute: () => AuthenticatedRouteRoute,
 } as any)
+const AuthenticatedBalancesRoute = AuthenticatedBalancesRouteImport.update({
+  id: '/balances',
+  path: '/balances',
+  getParentRoute: () => AuthenticatedRouteRoute,
+} as any)
 const ApiPublicGithubWebhookRoute = ApiPublicGithubWebhookRouteImport.update({
   id: '/api/public/github/webhook',
   path: '/api/public/github/webhook',
@@ -139,6 +145,7 @@ const ApiPublicBotConfigRoute = ApiPublicBotConfigRouteImport.update({
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/auth': typeof AuthRoute
+  '/balances': typeof AuthenticatedBalancesRoute
   '/bot': typeof AuthenticatedBotRoute
   '/dashboard': typeof AuthenticatedDashboardRoute
   '/exchanges': typeof AuthenticatedExchangesRoute
@@ -161,6 +168,7 @@ export interface FileRoutesByFullPath {
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/auth': typeof AuthRoute
+  '/balances': typeof AuthenticatedBalancesRoute
   '/bot': typeof AuthenticatedBotRoute
   '/dashboard': typeof AuthenticatedDashboardRoute
   '/exchanges': typeof AuthenticatedExchangesRoute
@@ -185,6 +193,7 @@ export interface FileRoutesById {
   '/': typeof IndexRoute
   '/_authenticated': typeof AuthenticatedRouteRouteWithChildren
   '/auth': typeof AuthRoute
+  '/_authenticated/balances': typeof AuthenticatedBalancesRoute
   '/_authenticated/bot': typeof AuthenticatedBotRoute
   '/_authenticated/dashboard': typeof AuthenticatedDashboardRoute
   '/_authenticated/exchanges': typeof AuthenticatedExchangesRoute
@@ -209,6 +218,7 @@ export interface FileRouteTypes {
   fullPaths:
     | '/'
     | '/auth'
+    | '/balances'
     | '/bot'
     | '/dashboard'
     | '/exchanges'
@@ -231,6 +241,7 @@ export interface FileRouteTypes {
   to:
     | '/'
     | '/auth'
+    | '/balances'
     | '/bot'
     | '/dashboard'
     | '/exchanges'
@@ -254,6 +265,7 @@ export interface FileRouteTypes {
     | '/'
     | '/_authenticated'
     | '/auth'
+    | '/_authenticated/balances'
     | '/_authenticated/bot'
     | '/_authenticated/dashboard'
     | '/_authenticated/exchanges'
@@ -387,6 +399,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedBotRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
+    '/_authenticated/balances': {
+      id: '/_authenticated/balances'
+      path: '/balances'
+      fullPath: '/balances'
+      preLoaderRoute: typeof AuthenticatedBalancesRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
     '/api/public/github/webhook': {
       id: '/api/public/github/webhook'
       path: '/api/public/github/webhook'
@@ -440,6 +459,7 @@ declare module '@tanstack/react-router' {
 }
 
 interface AuthenticatedRouteRouteChildren {
+  AuthenticatedBalancesRoute: typeof AuthenticatedBalancesRoute
   AuthenticatedBotRoute: typeof AuthenticatedBotRoute
   AuthenticatedDashboardRoute: typeof AuthenticatedDashboardRoute
   AuthenticatedExchangesRoute: typeof AuthenticatedExchangesRoute
@@ -454,6 +474,7 @@ interface AuthenticatedRouteRouteChildren {
 }
 
 const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
+  AuthenticatedBalancesRoute: AuthenticatedBalancesRoute,
   AuthenticatedBotRoute: AuthenticatedBotRoute,
   AuthenticatedDashboardRoute: AuthenticatedDashboardRoute,
   AuthenticatedExchangesRoute: AuthenticatedExchangesRoute,
