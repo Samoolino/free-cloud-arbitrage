@@ -1,6 +1,7 @@
 import { createServerFn } from "@tanstack/react-start";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 import { z } from "zod";
+import type { Json } from "@/integrations/supabase/types";
 
 export const getBalances = createServerFn({ method: "GET" })
   .middleware([requireSupabaseAuth])
@@ -15,7 +16,7 @@ export const getBalances = createServerFn({ method: "GET" })
       .limit(200);
     if (error) throw error;
     const seen = new Set<string>();
-    const latest: Array<{ exchange_id: string; balances: unknown; total_usd: number; taken_at: string }> = [];
+    const latest: Array<{ exchange_id: string; balances: Json; total_usd: number; taken_at: string }> = [];
     for (const row of data ?? []) {
       if (seen.has(row.exchange_id)) continue;
       seen.add(row.exchange_id);
@@ -43,7 +44,7 @@ export const getConnectivity = createServerFn({ method: "GET" })
       .order("created_at", { ascending: false })
       .limit(500);
     if (events.error) throw events.error;
-    const byExchange = new Map<string, { source: string; last_seen: string; level: string; message: string; context: unknown }>();
+    const byExchange = new Map<string, { source: string; last_seen: string; level: string; message: string; context: Json }>();
     let executorLastSeen: string | null = null;
     for (const e of events.data ?? []) {
       if (e.source === "executor" && !executorLastSeen) executorLastSeen = e.created_at as string;
@@ -55,7 +56,7 @@ export const getConnectivity = createServerFn({ method: "GET" })
             last_seen: e.created_at as string,
             level: e.level as string,
             message: e.message as string,
-            context: e.context,
+            context: (e.context ?? null) as Json,
           });
         }
       }
@@ -72,7 +73,7 @@ export const getExecutionDiagnostics = createServerFn({ method: "GET" })
     const { supabase, userId } = context;
     const [intents, trades, errors] = await Promise.all([
       supabase.from("trade_intents")
-        .select("id, status, strategy, allocated_usd, created_at, result_at, error")
+        .select("id, status, allocated_usd, created_at, result_at, error")
         .eq("user_id", userId).order("created_at", { ascending: false }).limit(15),
       supabase.from("trades")
         .select("id, strategy, notional_usd, realized_pnl_usd, paper, created_at")
