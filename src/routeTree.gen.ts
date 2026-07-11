@@ -30,6 +30,7 @@ import { Route as ApiPublicBotStatusRouteImport } from './routes/api/public/bot/
 import { Route as ApiPublicBotIntentsRouteImport } from './routes/api/public/bot/intents'
 import { Route as ApiPublicBotFillsRouteImport } from './routes/api/public/bot/fills'
 import { Route as ApiPublicBotEventsRouteImport } from './routes/api/public/bot/events'
+import { Route as ApiPublicBotContextRouteImport } from './routes/api/public/bot/context'
 import { Route as ApiPublicBotConfigRouteImport } from './routes/api/public/bot/config'
 import { Route as ApiPublicBotBalancesRouteImport } from './routes/api/public/bot/balances'
 
@@ -137,6 +138,11 @@ const ApiPublicBotEventsRoute = ApiPublicBotEventsRouteImport.update({
   path: '/api/public/bot/events',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ApiPublicBotContextRoute = ApiPublicBotContextRouteImport.update({
+  id: '/api/public/bot/context',
+  path: '/api/public/bot/context',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ApiPublicBotConfigRoute = ApiPublicBotConfigRouteImport.update({
   id: '/api/public/bot/config',
   path: '/api/public/bot/config',
@@ -165,6 +171,7 @@ export interface FileRoutesByFullPath {
   '/transfers': typeof AuthenticatedTransfersRoute
   '/api/public/bot/balances': typeof ApiPublicBotBalancesRoute
   '/api/public/bot/config': typeof ApiPublicBotConfigRoute
+  '/api/public/bot/context': typeof ApiPublicBotContextRoute
   '/api/public/bot/events': typeof ApiPublicBotEventsRoute
   '/api/public/bot/fills': typeof ApiPublicBotFillsRoute
   '/api/public/bot/intents': typeof ApiPublicBotIntentsRoute
@@ -189,6 +196,7 @@ export interface FileRoutesByTo {
   '/transfers': typeof AuthenticatedTransfersRoute
   '/api/public/bot/balances': typeof ApiPublicBotBalancesRoute
   '/api/public/bot/config': typeof ApiPublicBotConfigRoute
+  '/api/public/bot/context': typeof ApiPublicBotContextRoute
   '/api/public/bot/events': typeof ApiPublicBotEventsRoute
   '/api/public/bot/fills': typeof ApiPublicBotFillsRoute
   '/api/public/bot/intents': typeof ApiPublicBotIntentsRoute
@@ -215,6 +223,7 @@ export interface FileRoutesById {
   '/_authenticated/transfers': typeof AuthenticatedTransfersRoute
   '/api/public/bot/balances': typeof ApiPublicBotBalancesRoute
   '/api/public/bot/config': typeof ApiPublicBotConfigRoute
+  '/api/public/bot/context': typeof ApiPublicBotContextRoute
   '/api/public/bot/events': typeof ApiPublicBotEventsRoute
   '/api/public/bot/fills': typeof ApiPublicBotFillsRoute
   '/api/public/bot/intents': typeof ApiPublicBotIntentsRoute
@@ -241,6 +250,7 @@ export interface FileRouteTypes {
     | '/transfers'
     | '/api/public/bot/balances'
     | '/api/public/bot/config'
+    | '/api/public/bot/context'
     | '/api/public/bot/events'
     | '/api/public/bot/fills'
     | '/api/public/bot/intents'
@@ -265,6 +275,7 @@ export interface FileRouteTypes {
     | '/transfers'
     | '/api/public/bot/balances'
     | '/api/public/bot/config'
+    | '/api/public/bot/context'
     | '/api/public/bot/events'
     | '/api/public/bot/fills'
     | '/api/public/bot/intents'
@@ -290,6 +301,7 @@ export interface FileRouteTypes {
     | '/_authenticated/transfers'
     | '/api/public/bot/balances'
     | '/api/public/bot/config'
+    | '/api/public/bot/context'
     | '/api/public/bot/events'
     | '/api/public/bot/fills'
     | '/api/public/bot/intents'
@@ -304,6 +316,7 @@ export interface RootRouteChildren {
   AuthRoute: typeof AuthRoute
   ApiPublicBotBalancesRoute: typeof ApiPublicBotBalancesRoute
   ApiPublicBotConfigRoute: typeof ApiPublicBotConfigRoute
+  ApiPublicBotContextRoute: typeof ApiPublicBotContextRoute
   ApiPublicBotEventsRoute: typeof ApiPublicBotEventsRoute
   ApiPublicBotFillsRoute: typeof ApiPublicBotFillsRoute
   ApiPublicBotIntentsRoute: typeof ApiPublicBotIntentsRoute
@@ -461,6 +474,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiPublicBotEventsRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/public/bot/context': {
+      id: '/api/public/bot/context'
+      path: '/api/public/bot/context'
+      fullPath: '/api/public/bot/context'
+      preLoaderRoute: typeof ApiPublicBotContextRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/api/public/bot/config': {
       id: '/api/public/bot/config'
       path: '/api/public/bot/config'
@@ -517,6 +537,7 @@ const rootRouteChildren: RootRouteChildren = {
   AuthRoute: AuthRoute,
   ApiPublicBotBalancesRoute: ApiPublicBotBalancesRoute,
   ApiPublicBotConfigRoute: ApiPublicBotConfigRoute,
+  ApiPublicBotContextRoute: ApiPublicBotContextRoute,
   ApiPublicBotEventsRoute: ApiPublicBotEventsRoute,
   ApiPublicBotFillsRoute: ApiPublicBotFillsRoute,
   ApiPublicBotIntentsRoute: ApiPublicBotIntentsRoute,
