@@ -13,6 +13,7 @@ import {
   Bot,
   GitBranch,
   ShieldAlert,
+  Wallet,
   LogOut,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -39,6 +40,7 @@ const NAV = [
   { to: "/bot", label: "Executor", icon: Bot },
   { to: "/sync", label: "Git sync", icon: GitBranch },
   { to: "/operations", label: "Operations", icon: ShieldAlert },
+  { to: "/balances", label: "Balances", icon: Wallet },
 ] as const;
 
 function AuthedLayout() {
