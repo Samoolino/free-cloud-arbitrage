@@ -140,7 +140,41 @@ async def main_async(args: argparse.Namespace) -> None:
     log.info("CCXT clients ready: %s (dry_run=%s)", list(clients), dry_run)
     post_event("info", "executor", f"executor online (dry_run={dry_run})", {"clients": list(clients)})
 
+    last_heartbeat = 0.0
+    last_balances = 0.0
     while True:
+        now = time.time()
+        # Heartbeat every 20s per exchange client — powers the connectivity indicators.
+        if now - last_heartbeat > 20:
+            last_heartbeat = now
+            events = [{"level": "info", "source": f"heartbeat:{xid}",
+                       "message": "client alive",
+                       "context": {"markets": len(getattr(c, "markets", {}) or {})}}
+                      for xid, c in clients.items()]
+            if events:
+                try:
+                    signed("POST", "/api/public/bot/events", {"events": events})
+                except Exception:
+                    log.exception("heartbeat post failed")
+        # Balances every 30s — powers /balances page.
+        if now - last_balances > 30:
+            last_balances = now
+            snapshots = []
+            for xid, c in clients.items():
+                try:
+                    bal = await c.fetch_balance()
+                    totals = bal.get("total", {}) if isinstance(bal, dict) else {}
+                    trimmed = {k: float(v) for k, v in totals.items() if v and float(v) > 0}
+                    snapshots.append({"exchange_id": xid, "balances": trimmed, "total_usd": 0.0})
+                except Exception as exc:
+                    log.warning("balance fetch failed %s: %s", xid, exc)
+                    post_event("warn", f"heartbeat:{xid}", f"balance fetch failed: {exc}")
+            if snapshots:
+                try:
+                    signed("POST", "/api/public/bot/balances", {"snapshots": snapshots})
+                except Exception:
+                    log.exception("balances post failed")
+
         intents = signed("GET", "/api/public/bot/intents?limit=5").get("intents", [])
         if intents:
             await asyncio.gather(*[run_intent(clients, i, dry_run=dry_run) for i in intents])
