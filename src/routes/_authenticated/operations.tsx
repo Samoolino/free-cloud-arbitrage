@@ -5,6 +5,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { AlertTriangle, ShieldCheck, CircleDot } from "lucide-react";
 import { lastMirrorCheck } from "@/lib/mirror.functions";
+import { getConnectivity } from "@/lib/telemetry.functions";
 
 export const Route = createFileRoute("/_authenticated/operations")({
   component: OperationsPage,
@@ -73,6 +74,11 @@ const STRATEGIES: {
 function OperationsPage() {
   const getLast = useServerFn(lastMirrorCheck);
   const mirror = useQuery({ queryKey: ["ops-mirror-last"], queryFn: () => getLast() });
+  const getConn = useServerFn(getConnectivity);
+  const conn = useQuery({ queryKey: ["ops-connectivity"], queryFn: () => getConn(), refetchInterval: 10_000 });
+  const executorFresh = conn.data?.executor_last_seen
+    ? Date.now() - new Date(conn.data.executor_last_seen).getTime() < 120_000
+    : false;
 
   return (
     <div className="space-y-6 max-w-5xl">
@@ -139,6 +145,38 @@ function OperationsPage() {
                        [Supabase: trades, transfers, system_events]
                                              ▲
   [GitHub push] ─▶ /api/public/github/webhook (HMAC) ─▶ mirror integrity re-check`}</pre>
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-base flex items-center gap-2">
+            Exchange connectivity (live)
+            {executorFresh
+              ? <Badge className="bg-emerald-600/20 text-emerald-500 border border-emerald-600/40">executor online</Badge>
+              : <Badge variant="secondary">executor offline</Badge>}
+          </CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-2">
+          {conn.data?.exchanges.length ? conn.data.exchanges.map((x) => {
+            const fresh = Date.now() - new Date(x.last_seen).getTime() < 90_000;
+            return (
+              <div key={x.exchange_id} className="flex items-center justify-between border border-border rounded-md p-2 text-sm">
+                <div className="flex items-center gap-2">
+                  <CircleDot className={`h-3 w-3 ${fresh ? "text-emerald-500" : "text-muted-foreground"}`} />
+                  <span className="capitalize font-medium">{x.exchange_id}</span>
+                  <span className="text-xs text-muted-foreground">{x.message}</span>
+                </div>
+                <span className="text-xs text-muted-foreground">
+                  {new Date(x.last_seen).toLocaleTimeString()}
+                </span>
+              </div>
+            );
+          }) : (
+            <p className="text-xs text-muted-foreground">
+              No heartbeat received in the last 15 minutes. Start the Python worker; it will POST heartbeat events per WebSocket/REST client.
+            </p>
+          )}
         </CardContent>
       </Card>
 

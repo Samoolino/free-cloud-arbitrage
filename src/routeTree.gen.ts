@@ -23,13 +23,16 @@ import { Route as AuthenticatedLogsRouteImport } from './routes/_authenticated/l
 import { Route as AuthenticatedExchangesRouteImport } from './routes/_authenticated/exchanges'
 import { Route as AuthenticatedDashboardRouteImport } from './routes/_authenticated/dashboard'
 import { Route as AuthenticatedBotRouteImport } from './routes/_authenticated/bot'
+import { Route as AuthenticatedBalancesRouteImport } from './routes/_authenticated/balances'
 import { Route as ApiPublicGithubWebhookRouteImport } from './routes/api/public/github/webhook'
 import { Route as ApiPublicBotTransfersRouteImport } from './routes/api/public/bot/transfers'
 import { Route as ApiPublicBotStatusRouteImport } from './routes/api/public/bot/status'
 import { Route as ApiPublicBotIntentsRouteImport } from './routes/api/public/bot/intents'
 import { Route as ApiPublicBotFillsRouteImport } from './routes/api/public/bot/fills'
 import { Route as ApiPublicBotEventsRouteImport } from './routes/api/public/bot/events'
+import { Route as ApiPublicBotContextRouteImport } from './routes/api/public/bot/context'
 import { Route as ApiPublicBotConfigRouteImport } from './routes/api/public/bot/config'
+import { Route as ApiPublicBotBalancesRouteImport } from './routes/api/public/bot/balances'
 
 const AuthRoute = AuthRouteImport.update({
   id: '/auth',
@@ -100,6 +103,11 @@ const AuthenticatedBotRoute = AuthenticatedBotRouteImport.update({
   path: '/bot',
   getParentRoute: () => AuthenticatedRouteRoute,
 } as any)
+const AuthenticatedBalancesRoute = AuthenticatedBalancesRouteImport.update({
+  id: '/balances',
+  path: '/balances',
+  getParentRoute: () => AuthenticatedRouteRoute,
+} as any)
 const ApiPublicGithubWebhookRoute = ApiPublicGithubWebhookRouteImport.update({
   id: '/api/public/github/webhook',
   path: '/api/public/github/webhook',
@@ -130,15 +138,26 @@ const ApiPublicBotEventsRoute = ApiPublicBotEventsRouteImport.update({
   path: '/api/public/bot/events',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ApiPublicBotContextRoute = ApiPublicBotContextRouteImport.update({
+  id: '/api/public/bot/context',
+  path: '/api/public/bot/context',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ApiPublicBotConfigRoute = ApiPublicBotConfigRouteImport.update({
   id: '/api/public/bot/config',
   path: '/api/public/bot/config',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiPublicBotBalancesRoute = ApiPublicBotBalancesRouteImport.update({
+  id: '/api/public/bot/balances',
+  path: '/api/public/bot/balances',
   getParentRoute: () => rootRouteImport,
 } as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/auth': typeof AuthRoute
+  '/balances': typeof AuthenticatedBalancesRoute
   '/bot': typeof AuthenticatedBotRoute
   '/dashboard': typeof AuthenticatedDashboardRoute
   '/exchanges': typeof AuthenticatedExchangesRoute
@@ -150,7 +169,9 @@ export interface FileRoutesByFullPath {
   '/sync': typeof AuthenticatedSyncRoute
   '/trades': typeof AuthenticatedTradesRoute
   '/transfers': typeof AuthenticatedTransfersRoute
+  '/api/public/bot/balances': typeof ApiPublicBotBalancesRoute
   '/api/public/bot/config': typeof ApiPublicBotConfigRoute
+  '/api/public/bot/context': typeof ApiPublicBotContextRoute
   '/api/public/bot/events': typeof ApiPublicBotEventsRoute
   '/api/public/bot/fills': typeof ApiPublicBotFillsRoute
   '/api/public/bot/intents': typeof ApiPublicBotIntentsRoute
@@ -161,6 +182,7 @@ export interface FileRoutesByFullPath {
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/auth': typeof AuthRoute
+  '/balances': typeof AuthenticatedBalancesRoute
   '/bot': typeof AuthenticatedBotRoute
   '/dashboard': typeof AuthenticatedDashboardRoute
   '/exchanges': typeof AuthenticatedExchangesRoute
@@ -172,7 +194,9 @@ export interface FileRoutesByTo {
   '/sync': typeof AuthenticatedSyncRoute
   '/trades': typeof AuthenticatedTradesRoute
   '/transfers': typeof AuthenticatedTransfersRoute
+  '/api/public/bot/balances': typeof ApiPublicBotBalancesRoute
   '/api/public/bot/config': typeof ApiPublicBotConfigRoute
+  '/api/public/bot/context': typeof ApiPublicBotContextRoute
   '/api/public/bot/events': typeof ApiPublicBotEventsRoute
   '/api/public/bot/fills': typeof ApiPublicBotFillsRoute
   '/api/public/bot/intents': typeof ApiPublicBotIntentsRoute
@@ -185,6 +209,7 @@ export interface FileRoutesById {
   '/': typeof IndexRoute
   '/_authenticated': typeof AuthenticatedRouteRouteWithChildren
   '/auth': typeof AuthRoute
+  '/_authenticated/balances': typeof AuthenticatedBalancesRoute
   '/_authenticated/bot': typeof AuthenticatedBotRoute
   '/_authenticated/dashboard': typeof AuthenticatedDashboardRoute
   '/_authenticated/exchanges': typeof AuthenticatedExchangesRoute
@@ -196,7 +221,9 @@ export interface FileRoutesById {
   '/_authenticated/sync': typeof AuthenticatedSyncRoute
   '/_authenticated/trades': typeof AuthenticatedTradesRoute
   '/_authenticated/transfers': typeof AuthenticatedTransfersRoute
+  '/api/public/bot/balances': typeof ApiPublicBotBalancesRoute
   '/api/public/bot/config': typeof ApiPublicBotConfigRoute
+  '/api/public/bot/context': typeof ApiPublicBotContextRoute
   '/api/public/bot/events': typeof ApiPublicBotEventsRoute
   '/api/public/bot/fills': typeof ApiPublicBotFillsRoute
   '/api/public/bot/intents': typeof ApiPublicBotIntentsRoute
@@ -209,6 +236,7 @@ export interface FileRouteTypes {
   fullPaths:
     | '/'
     | '/auth'
+    | '/balances'
     | '/bot'
     | '/dashboard'
     | '/exchanges'
@@ -220,7 +248,9 @@ export interface FileRouteTypes {
     | '/sync'
     | '/trades'
     | '/transfers'
+    | '/api/public/bot/balances'
     | '/api/public/bot/config'
+    | '/api/public/bot/context'
     | '/api/public/bot/events'
     | '/api/public/bot/fills'
     | '/api/public/bot/intents'
@@ -231,6 +261,7 @@ export interface FileRouteTypes {
   to:
     | '/'
     | '/auth'
+    | '/balances'
     | '/bot'
     | '/dashboard'
     | '/exchanges'
@@ -242,7 +273,9 @@ export interface FileRouteTypes {
     | '/sync'
     | '/trades'
     | '/transfers'
+    | '/api/public/bot/balances'
     | '/api/public/bot/config'
+    | '/api/public/bot/context'
     | '/api/public/bot/events'
     | '/api/public/bot/fills'
     | '/api/public/bot/intents'
@@ -254,6 +287,7 @@ export interface FileRouteTypes {
     | '/'
     | '/_authenticated'
     | '/auth'
+    | '/_authenticated/balances'
     | '/_authenticated/bot'
     | '/_authenticated/dashboard'
     | '/_authenticated/exchanges'
@@ -265,7 +299,9 @@ export interface FileRouteTypes {
     | '/_authenticated/sync'
     | '/_authenticated/trades'
     | '/_authenticated/transfers'
+    | '/api/public/bot/balances'
     | '/api/public/bot/config'
+    | '/api/public/bot/context'
     | '/api/public/bot/events'
     | '/api/public/bot/fills'
     | '/api/public/bot/intents'
@@ -278,7 +314,9 @@ export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   AuthenticatedRouteRoute: typeof AuthenticatedRouteRouteWithChildren
   AuthRoute: typeof AuthRoute
+  ApiPublicBotBalancesRoute: typeof ApiPublicBotBalancesRoute
   ApiPublicBotConfigRoute: typeof ApiPublicBotConfigRoute
+  ApiPublicBotContextRoute: typeof ApiPublicBotContextRoute
   ApiPublicBotEventsRoute: typeof ApiPublicBotEventsRoute
   ApiPublicBotFillsRoute: typeof ApiPublicBotFillsRoute
   ApiPublicBotIntentsRoute: typeof ApiPublicBotIntentsRoute
@@ -387,6 +425,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedBotRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
+    '/_authenticated/balances': {
+      id: '/_authenticated/balances'
+      path: '/balances'
+      fullPath: '/balances'
+      preLoaderRoute: typeof AuthenticatedBalancesRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
     '/api/public/github/webhook': {
       id: '/api/public/github/webhook'
       path: '/api/public/github/webhook'
@@ -429,6 +474,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiPublicBotEventsRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/public/bot/context': {
+      id: '/api/public/bot/context'
+      path: '/api/public/bot/context'
+      fullPath: '/api/public/bot/context'
+      preLoaderRoute: typeof ApiPublicBotContextRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/api/public/bot/config': {
       id: '/api/public/bot/config'
       path: '/api/public/bot/config'
@@ -436,10 +488,18 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiPublicBotConfigRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/public/bot/balances': {
+      id: '/api/public/bot/balances'
+      path: '/api/public/bot/balances'
+      fullPath: '/api/public/bot/balances'
+      preLoaderRoute: typeof ApiPublicBotBalancesRouteImport
+      parentRoute: typeof rootRouteImport
+    }
   }
 }
 
 interface AuthenticatedRouteRouteChildren {
+  AuthenticatedBalancesRoute: typeof AuthenticatedBalancesRoute
   AuthenticatedBotRoute: typeof AuthenticatedBotRoute
   AuthenticatedDashboardRoute: typeof AuthenticatedDashboardRoute
   AuthenticatedExchangesRoute: typeof AuthenticatedExchangesRoute
@@ -454,6 +514,7 @@ interface AuthenticatedRouteRouteChildren {
 }
 
 const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
+  AuthenticatedBalancesRoute: AuthenticatedBalancesRoute,
   AuthenticatedBotRoute: AuthenticatedBotRoute,
   AuthenticatedDashboardRoute: AuthenticatedDashboardRoute,
   AuthenticatedExchangesRoute: AuthenticatedExchangesRoute,
@@ -474,7 +535,9 @@ const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   AuthenticatedRouteRoute: AuthenticatedRouteRouteWithChildren,
   AuthRoute: AuthRoute,
+  ApiPublicBotBalancesRoute: ApiPublicBotBalancesRoute,
   ApiPublicBotConfigRoute: ApiPublicBotConfigRoute,
+  ApiPublicBotContextRoute: ApiPublicBotContextRoute,
   ApiPublicBotEventsRoute: ApiPublicBotEventsRoute,
   ApiPublicBotFillsRoute: ApiPublicBotFillsRoute,
   ApiPublicBotIntentsRoute: ApiPublicBotIntentsRoute,
@@ -485,13 +548,3 @@ const rootRouteChildren: RootRouteChildren = {
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
   ._addFileTypes<FileRouteTypes>()
-
-import type { getRouter } from './router.tsx'
-import type { startInstance } from './start.ts'
-declare module '@tanstack/react-start' {
-  interface Register {
-    ssr: true
-    router: Awaited<ReturnType<typeof getRouter>>
-    config: Awaited<ReturnType<typeof startInstance.getOptions>>
-  }
-}
