@@ -143,6 +143,42 @@ export type Database = {
         }
         Relationships: []
       }
+      market_context: {
+        Row: {
+          created_at: string
+          exchange_id: string | null
+          id: string
+          payload: Json
+          scope: string
+          symbol: string | null
+          ttl_seconds: number
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          exchange_id?: string | null
+          id?: string
+          payload?: Json
+          scope: string
+          symbol?: string | null
+          ttl_seconds?: number
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          exchange_id?: string | null
+          id?: string
+          payload?: Json
+          scope?: string
+          symbol?: string | null
+          ttl_seconds?: number
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       opportunities: {
         Row: {
           detected_at: string
