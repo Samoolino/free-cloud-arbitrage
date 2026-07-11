@@ -1,10 +1,17 @@
 import { createFileRoute } from "@tanstack/react-router";
+import { useQuery } from "@tanstack/react-query";
+import { useServerFn } from "@tanstack/react-start";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { getExecutionDiagnostics } from "@/lib/telemetry.functions";
 
 export const Route = createFileRoute("/_authenticated/bot")({ component: BotPage });
 
 function BotPage() {
+  const getDiag = useServerFn(getExecutionDiagnostics);
+  const diag = useQuery({ queryKey: ["exec-diag"], queryFn: () => getDiag(), refetchInterval: 8_000 });
+  const c = diag.data?.counts ?? {};
+  const stuck = (c.queued ?? 0) > 0 && (c.acked ?? 0) === 0 && (c.filled ?? 0) === 0;
   return (
     <div className="space-y-6 max-w-3xl">
       <header>
@@ -18,6 +25,57 @@ function BotPage() {
           live balances via <a className="underline" href="https://github.com/ccxt/ccxt" target="_blank" rel="noreferrer">ccxt / ccxt.pro</a>.
         </p>
       </header>
+
+      <Card className={stuck ? "border-red-500/40 bg-red-500/5" : ""}>
+        <CardHeader>
+          <CardTitle className="text-base flex items-center justify-between">
+            <span>Execution pipeline (last 15 intents)</span>
+            {stuck && <Badge variant="destructive">EXECUTION BLOCKED</Badge>}
+          </CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-3 text-sm">
+          <div className="grid grid-cols-4 sm:grid-cols-7 gap-2 text-center">
+            {(["queued", "acked", "filled", "partial", "failed", "cancelled", "aborted_stale"] as const).map((k) => (
+              <div key={k} className="border border-border rounded-md p-2">
+                <div className="text-xs text-muted-foreground capitalize">{k.replace("_", " ")}</div>
+                <div className="text-lg font-semibold">{c[k] ?? 0}</div>
+              </div>
+            ))}
+          </div>
+          {stuck && (
+            <p className="text-xs text-red-400">
+              Intents are queued but the worker never acknowledged them. Check: worker running? <code>BOT_SHARED_SECRET</code> matches? <code>BOT_USER_ID</code> matches your uuid? <code>LOVABLE_BASE_URL</code> reachable?
+            </p>
+          )}
+          {diag.data?.errors && diag.data.errors.length > 0 && (
+            <div className="border-t border-border pt-2">
+              <div className="text-xs text-muted-foreground mb-1">Recent errors from worker/scanner</div>
+              <ul className="text-xs font-mono space-y-1">
+                {diag.data.errors.map((e, i) => (
+                  <li key={i} className="text-red-400 truncate">
+                    [{e.source}] {e.message}
+                  </li>
+                ))}
+              </ul>
+            </div>
+          )}
+          {diag.data?.trades && diag.data.trades.length > 0 && (
+            <div className="border-t border-border pt-2">
+              <div className="text-xs text-muted-foreground mb-1">Last {diag.data.trades.length} recorded trades</div>
+              <ul className="text-xs space-y-1">
+                {diag.data.trades.map((t) => (
+                  <li key={t.id} className="flex justify-between">
+                    <span>{t.strategy} — ${Number(t.notional_usd).toFixed(2)}</span>
+                    <span className={Number(t.realized_pnl_usd) >= 0 ? "text-emerald-500" : "text-red-400"}>
+                      {Number(t.realized_pnl_usd) >= 0 ? "+" : ""}${Number(t.realized_pnl_usd).toFixed(4)} {t.paper ? "(paper)" : ""}
+                    </span>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          )}
+        </CardContent>
+      </Card>
 
       <Card className="border-amber-500/40 bg-amber-500/5">
         <CardHeader><CardTitle className="text-base">Why the dashboard shows no real trades yet</CardTitle></CardHeader>
