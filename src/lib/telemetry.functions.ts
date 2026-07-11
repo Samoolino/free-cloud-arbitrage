@@ -76,8 +76,8 @@ export const getExecutionDiagnostics = createServerFn({ method: "GET" })
         .select("id, status, allocated_usd, created_at, result_at, error")
         .eq("user_id", userId).order("created_at", { ascending: false }).limit(15),
       supabase.from("trades")
-        .select("id, strategy, notional_usd, realized_pnl_usd, paper, created_at")
-        .eq("user_id", userId).order("created_at", { ascending: false }).limit(10),
+        .select("id, strategy, notional_usd, realized_pnl_usd, paper, executed_at")
+        .eq("user_id", userId).order("executed_at", { ascending: false }).limit(10),
       supabase.from("system_events")
         .select("source, level, message, created_at")
         .eq("user_id", userId).eq("level", "error")
