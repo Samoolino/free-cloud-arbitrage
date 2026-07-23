@@ -14,7 +14,7 @@ const listTrades = createServerFn({ method: "GET" })
     return data;
   });
 
-type Row = { id: string; strategy: string; notional_usd: number; realized_pnl_usd: number; paper: boolean; created_at: string };
+type Row = { id: string; strategy: string; notional_usd: number; realized_pnl_usd: number; created_at: string };
 
 export const Route = createFileRoute("/_authenticated/trades")({ component: TradesPage });
 

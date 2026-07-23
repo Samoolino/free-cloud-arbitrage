@@ -2,7 +2,7 @@ import { createFileRoute } from "@tanstack/react-router";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useMemo, useState } from "react";
 import { getBotConfig } from "@/lib/bot-config.functions";
-import { getActiveSession, recordPaperTrade, startSession, stopSession } from "@/lib/sessions.functions";
+import { getActiveSession, startSession, stopSession } from "@/lib/sessions.functions";
 import { listExchangeCredentials } from "@/lib/exchanges.functions";
 import { useScanner } from "@/hooks/use-scanner";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -12,7 +12,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Separator } from "@/components/ui/separator";
 import { EXCHANGE_GRID, EXCHANGE_BY_ID } from "@/lib/exchanges";
-import { Radar, Play, Square, CircleDot, Zap, AlertTriangle, Check } from "lucide-react";
+import { Radar, Play, Square, CircleDot, Zap, AlertTriangle } from "lucide-react";
 import { toast } from "sonner";
 
 export const Route = createFileRoute("/_authenticated/scanner")({
@@ -55,15 +55,6 @@ function ScannerPage() {
   const stopSess = useMutation({
     mutationFn: (id: string) => stopSession({ data: { session_id: id } }),
     onSuccess: () => { qc.invalidateQueries({ queryKey: ["session_active"] }); toast.success("Session stopped"); },
-  });
-  const paperFill = useMutation({
-    mutationFn: (vars: { sid: string; legs: unknown; pnl: number; notional: number }) =>
-      recordPaperTrade({ data: { session_id: vars.sid, legs: vars.legs, strategy: "triangular", notional_usd: vars.notional, realized_pnl_usd: vars.pnl } }),
-    onSuccess: (r) => {
-      qc.invalidateQueries({ queryKey: ["session_active"] });
-      if (r.target_reached) toast.success("Target reached — session closed");
-      else toast.success("Paper fill recorded");
-    },
   });
 
   const triggerCred = (creds as Array<{ exchange_id: string; is_trigger: boolean }> | undefined)?.find((c) => c.is_trigger);
@@ -109,7 +100,7 @@ function ScannerPage() {
             </div>
           )}
           <p className="text-xs text-muted-foreground">
-            Bot runs until target amount is hit. Paper fills are simulated from the resolved plan and live order book.
+            Bot runs until target amount is hit. Live fills are produced by the external worker using your CCXT keys.
           </p>
         </CardContent>
       </Card>
@@ -157,16 +148,6 @@ function ScannerPage() {
                       <div>Max <span className="text-foreground">${opp.maxSizeUsd.toFixed(0)}</span></div>
                       <div>Net via <span className="text-foreground">{opp.transferNetwork}</span></div>
                     </div>
-                    {session && (
-                      <div className="mt-2 flex justify-end">
-                        <Button size="sm" variant="secondary" onClick={() => paperFill.mutate({
-                          sid: session.id, legs: opp.legs, notional: allocatedUsd,
-                          pnl: (opp.expectedNetPct / 100) * allocatedUsd,
-                        })}>
-                          <Check className="h-3.5 w-3.5 mr-1"/> Record paper fill
-                        </Button>
-                      </div>
-                    )}
                   </div>
                 ))}
               </div>

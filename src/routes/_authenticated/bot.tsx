@@ -67,7 +67,7 @@ function BotPage() {
                   <li key={t.id} className="flex justify-between">
                     <span>{t.strategy} — ${Number(t.notional_usd).toFixed(2)}</span>
                     <span className={Number(t.realized_pnl_usd) >= 0 ? "text-emerald-500" : "text-red-400"}>
-                      {Number(t.realized_pnl_usd) >= 0 ? "+" : ""}${Number(t.realized_pnl_usd).toFixed(4)} {t.paper ? "(paper)" : ""}
+                      {Number(t.realized_pnl_usd) >= 0 ? "+" : ""}${Number(t.realized_pnl_usd).toFixed(4)}
                     </span>
                   </li>
                 ))}

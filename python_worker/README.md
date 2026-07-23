@@ -21,6 +21,11 @@ Create or edit the `.env` file in this folder.
 SUPABASE_URL=https://your-project.supabase.co
 SUPABASE_KEY=your-supabase-service-role-key
 
+# Lovable HMAC auth for executor.py
+LOVABLE_BASE_URL=https://yourapp.lovable.app
+BOT_SHARED_SECRET=your_shared_secret
+BOT_USER_ID=your_user_uuid
+
 SUPABASE_SIGNALS_TABLE=trading_signals
 SUPABASE_PENDING_STATUS=pending
 SUPABASE_COMPLETED_STATUS=completed
@@ -41,15 +46,31 @@ WORKER_LOG_FILE=worker.log
 
 ## 3. Run a safe first test
 
-Use a single dry-run cycle first:
+Use a single dry-run cycle first with the simple signal worker:
 
 ```powershell
 python worker.py --once
 ```
 
-This will poll pending Supabase signals once and exit.
+Validate the Lovable executor auth flow and CCXT client setup without placing real orders:
 
-## 4. Run the async arbitrage orderbook worker
+```powershell
+python executor.py --dry-run --once
+```
+
+This will poll queued intents once, simulate order placement, and report fills back to the app.
+
+## 4. Run the live Lovable executor
+
+For live order placement through the Lovable intent queue, run:
+
+```powershell
+python executor.py --live
+```
+
+This worker will poll `/api/public/bot/intents`, create live CCXT orders, and report fills back to the dashboard.
+
+## 5. Run the async arbitrage orderbook worker
 
 For real-time orderbook streaming and depth-based opportunity checks:
 

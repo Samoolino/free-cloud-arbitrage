@@ -28,8 +28,13 @@ import requests
 
 try:
     import ccxt.pro as ccxtpro  # https://github.com/ccxt/ccxt
-except ImportError:  # ccxt.pro lives inside the ccxt package
-    import ccxt as ccxtpro  # type: ignore
+except ImportError:
+    try:
+        import ccxt.async_support as ccxtpro
+    except ImportError:
+        raise ImportError(
+            "ccxt.pro is unavailable. Install ccxtpro or a ccxt package version that provides async_support."
+        )
 
 log = logging.getLogger("executor")
 logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(message)s")

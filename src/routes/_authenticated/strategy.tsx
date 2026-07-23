@@ -56,14 +56,6 @@ function StrategyPage() {
           <div><Label className="text-xs">WS staleness (ms)</Label>
             <Input type="number" value={String(form.ws_staleness_ms ?? "")} onChange={(e) => setForm({ ...form, ws_staleness_ms: Number(e.target.value) })} />
           </div>
-          <div className="flex items-center gap-3 pt-5">
-            <Switch checked={!!form.paper_trading} onCheckedChange={(v) => setForm({ ...form, paper_trading: v })} />
-            <Label className="text-xs">Paper trading mode</Label>
-          </div>
-          <div className="flex items-center gap-3 pt-5">
-            <Switch checked={!!form.dry_run} onCheckedChange={(v) => setForm({ ...form, dry_run: v })} />
-            <Label className="text-xs">Executor dry-run (no live orders)</Label>
-          </div>
         </CardContent>
       </Card>
 
@@ -101,7 +93,6 @@ function StrategyPage() {
 
       <div className="flex justify-end">
         <Button onClick={() => update.mutate({
-          paper_trading: !!form.paper_trading,
           target_profit_pct: Number(form.target_profit_pct),
           slippage_buffer_pct: Number(form.slippage_buffer_pct),
           min_trigger_balance_usd: Number(form.min_trigger_balance_usd),

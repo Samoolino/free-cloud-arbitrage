@@ -44,6 +44,7 @@ function DashboardPage() {
   const trigger = creds?.find((c) => c.is_trigger);
   const enabledCount = creds?.filter((c) => c.enabled).length ?? 0;
   const isLive = !data.config.paper_trading && !data.config.dry_run;
+  const statusLabel = data.config.dry_run ? "SIMULATION" : isLive ? "LIVE FUNDS" : "PAPER MODE";
 
   return (
     <div className="space-y-6 max-w-6xl">
@@ -55,7 +56,7 @@ function DashboardPage() {
         <div className="flex items-center gap-2">
           {isLive
             ? <Badge className="bg-red-600/20 text-red-400 border border-red-700/40">LIVE FUNDS</Badge>
-            : <Badge variant="secondary">{data.config.paper_trading ? "Paper" : "Dry-run"}</Badge>}
+            : <Badge variant="secondary">{statusLabel}</Badge>}
           <GoLiveButton isLive={isLive} />
         </div>
       </header>
