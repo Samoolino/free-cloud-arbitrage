@@ -6,6 +6,8 @@ import sys
 import time
 from typing import Any, Optional
 
+import httpx
+
 import ccxt
 from dotenv import load_dotenv
 from supabase import create_client
@@ -189,16 +191,26 @@ def main() -> None:
     logger.info("Using exchange: %s", get_exchange_id())
 
     interval_seconds = int(os.getenv("POLL_INTERVAL_SECONDS", "5"))
+    retry_backoff_seconds = int(os.getenv("WORKER_RETRY_BACKOFF_SECONDS", "15"))
+    consecutive_failures = 0
 
     while should_run:
         try:
             signals = fetch_lovable_signals()
+            consecutive_failures = 0
             if signals:
                 logger.info("Found %s pending signals", len(signals))
             for signal in signals:
                 execute_trade(signal)
         except Exception as exc:
-            logger.exception("Worker loop error: %s", exc)
+            consecutive_failures += 1
+            logger.exception("Worker loop error (%s/%s): %s", consecutive_failures, retry_backoff_seconds, exc)
+            if args.once:
+                break
+            delay_seconds = retry_backoff_seconds if consecutive_failures > 1 else interval_seconds
+            logger.info("Retrying in %s seconds", delay_seconds)
+            time.sleep(delay_seconds)
+            continue
 
         if args.once:
             break
