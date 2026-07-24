@@ -1,0 +1,13 @@
+[Unit]
+Description=Free Cloud Arbitrage worker
+After=network.target
+
+[Service]
+WorkingDirectory=/path/to/free-cloud-arbitrage/python_worker
+ExecStart=/usr/bin/env bash /path/to/free-cloud-arbitrage/python_worker/start_worker.sh
+Restart=always
+RestartSec=5
+Environment=PYTHONUNBUFFERED=1
+
+[Install]
+WantedBy=multi-user.target

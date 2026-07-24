@@ -84,15 +84,35 @@ This worker connects to multiple exchange feeds concurrently and writes arbitrag
 
 For normal continuous operation:
 
-```powershell
+```bash
 python worker.py
 ```
 
 The worker will keep polling until you stop it with Ctrl+C.
 
-## 5. Run as a Windows service
+## 6. Run on Linux / WSL
 
-If you want the worker to start automatically on boot, run the PowerShell installer from the repo root:
+For Linux or WSL deployments, use the portable launcher instead of the Windows-only PowerShell path:
+
+```bash
+cd python_worker
+chmod +x start_worker.sh
+./start_worker.sh
+```
+
+The launcher uses the current Python interpreter by default and supports `PYTHON_EXE` when you want to point at a specific virtualenv or Conda environment.
+
+To run the worker as a long-lived process with systemd, copy the sample unit file and edit the path and user:
+
+```bash
+sudo cp python_worker/free-cloud-arbitrage-worker.service /etc/systemd/system/
+sudo systemctl daemon-reload
+sudo systemctl enable --now free-cloud-arbitrage-worker
+```
+
+## 7. Run as a Windows service
+
+If you want the worker to start automatically on boot on Windows, run the PowerShell installer from the repo root:
 
 ```powershell
 Set-ExecutionPolicy -Scope Process Bypass
@@ -108,7 +128,7 @@ Stop-Service -Name FreeCloudArbitrageWorker
 Start-Service -Name FreeCloudArbitrageWorker
 ```
 
-## 6. Safety notes
+## 8. Safety notes
 
 - Keep `NO_LOSS_MODE=true` while testing.
 - Use sandbox/testnet credentials when available.
