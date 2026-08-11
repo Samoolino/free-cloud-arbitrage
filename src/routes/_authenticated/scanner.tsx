@@ -1,5 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { queueTradeIntents } from "@/lib/trade-intents.functions";
 import { useMemo, useState } from "react";
 import { getBotConfig } from "@/lib/bot-config.functions";
 import { getActiveSession, startSession, stopSession } from "@/lib/sessions.functions";
@@ -55,6 +56,12 @@ function ScannerPage() {
   const stopSess = useMutation({
     mutationFn: (id: string) => stopSession({ data: { session_id: id } }),
     onSuccess: () => { qc.invalidateQueries({ queryKey: ["session_active"] }); toast.success("Session stopped"); },
+  });
+
+  const queueMut = useMutation({
+    mutationFn: (payload: unknown) => queueTradeIntents({ data: payload }),
+    onSuccess: () => { qc.invalidateQueries({ queryKey: ["exec-diag", "session_active"] }); },
+    onError: (e: Error) => toast.error(e.message),
   });
 
   const triggerCred = (creds as Array<{ exchange_id: string; is_trigger: boolean }> | undefined)?.find((c) => c.is_trigger);
@@ -150,6 +157,29 @@ function ScannerPage() {
                     </div>
                   </div>
                 ))}
+
+                <div className="flex items-center gap-2">
+                  <Button
+                    onClick={() => {
+                      const selected = resolved.selected.map(({ opp, allocatedUsd }) => ({
+                        strategy: opp.strategy,
+                        legs: opp.legs,
+                        allocated_usd: allocatedUsd,
+                        expected_net_usd: opp.expectedNetUsd,
+                        expected_net_pct: opp.expectedNetPct,
+                        max_size_usd: opp.maxSizeUsd,
+                        path: opp.path ?? undefined,
+                        transfer_network: opp.transferNetwork ?? null,
+                        transfer_fee_quote: opp.transferFeeQuote ?? null,
+                      }));
+                      queueMut.mutate({ selected, session_id: session?.id });
+                    }}
+                    disabled={queueMut.isPending}
+                  >
+                    Queue selected intents
+                  </Button>
+                  {queueMut.isPending && <div className="text-xs text-muted-foreground">Queuing…</div>}
+                </div>
               </div>
             )}
 

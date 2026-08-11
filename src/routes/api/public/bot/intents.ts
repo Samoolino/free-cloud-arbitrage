@@ -21,9 +21,10 @@ export const Route = createFileRoute("/api/public/bot/intents")({
           if (sel.error) return errorBot(sel.error.message, 500);
           const rows = sel.data ?? [];
           if (rows.length) {
-            await supabaseAdmin.from("trade_intents")
+            const up = await supabaseAdmin.from("trade_intents")
               .update({ status: "acked", ack_at: new Date().toISOString() })
               .in("id", rows.map((r) => r.id));
+            if (up.error) return errorBot(up.error.message, 500);
           }
           return jsonBot({ intents: rows });
         } catch (e) {
