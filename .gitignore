@@ -16,6 +16,20 @@ dist-ssr
 .nitro
 *.local
 
+# Environment / secrets
+.env
+.env.*
+!.env.example
+python_worker/.env
+python_worker/.venv/
+python_worker/venv/
+
+# Python generated files
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+
 # Wrangler / Cloudflare
 .wrangler/
 .dev.vars
