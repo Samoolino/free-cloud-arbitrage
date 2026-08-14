@@ -1,8 +1,10 @@
+import time
+
 from arbitrage_engine import ArbitrageEngine, Quote
 
 
 def quote(exchange, bid, ask, fee=0.001, age=0):
-    return Quote(exchange, "BTC/USDT", bid, 1.0, ask, 1.0, fee, 999999999999 - age)
+    return Quote(exchange, "BTC/USDT", bid, 1.0, ask, 1.0, fee, int(time.time() * 1000) - age)
 
 
 def test_profitable_route_requires_net_profit():
