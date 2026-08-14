@@ -1,5 +1,5 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { verifyBotRequest, jsonBot, errorBot, BOT_CORS } from "@/lib/bot-auth.server";
+import { verifyBotRequest, errorBot, BOT_CORS } from "@/lib/bot-auth.server";
 import { decryptExchangeSecret } from "@/lib/exchange-crypto.server";
 
 export const Route = createFileRoute("/api/public/bot/credentials")({
@@ -26,7 +26,10 @@ export const Route = createFileRoute("/api/public/bot/credentials")({
             secret: decryptExchangeSecret(row.api_secret_enc),
             passphrase: decryptExchangeSecret(row.passphrase_enc),
           }));
-          return jsonBot({ credentials }, { "Cache-Control": "no-store" });
+          return new Response(JSON.stringify({ credentials }), {
+            status: 200,
+            headers: { "Content-Type": "application/json", "Cache-Control": "no-store", ...BOT_CORS },
+          });
         } catch (e) {
           if (e instanceof Response) return e;
           return errorBot((e as Error).message, 500);
