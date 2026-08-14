@@ -119,7 +119,7 @@ class ArbitrageEngine:
             max_quote_age_ms=max(buy.age_ms, sell.age_ms),
         )
 
-    def scan_two_leg(self, quotes: Iterable[Quote], input_usdt: float) -> List[Opportunity]:
+    def scan(self, quotes: Iterable[Quote], input_usdt: float) -> List[Opportunity]:
         grouped: Dict[str, List[Quote]] = {}
         for q in quotes:
             grouped.setdefault(q.symbol, []).append(q)
@@ -130,3 +130,5 @@ class ArbitrageEngine:
                 if result:
                     results.append(result)
         return sorted(results, key=lambda item: item.expected_profit_usd, reverse=True)
+
+    scan_two_leg = scan
