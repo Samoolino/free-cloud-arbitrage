@@ -40,7 +40,7 @@ function binance(): Adapter {
               ts: Date.now(),
             },
           });
-        } catch {}
+        } catch { /* ignore malformed public frames */ }
       };
       return () => ws.close();
     },
@@ -71,7 +71,7 @@ function okx(): Adapter {
               ts: Date.now(),
             },
           });
-        } catch {}
+        } catch { /* ignore malformed public frames */ }
       };
       return () => ws.close();
     },
@@ -109,7 +109,7 @@ function coinbase(): Adapter {
             book.ts = Date.now();
             onUpdate({ exchange: "coinbase", base, quote, book });
           }
-        } catch {}
+        } catch { /* ignore malformed public frames */ }
       };
       return () => ws.close();
     },
@@ -141,7 +141,7 @@ function kraken(): Adapter {
               },
             });
           }
-        } catch {}
+        } catch { /* ignore malformed public frames */ }
       };
       return () => ws.close();
     },
