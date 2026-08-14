@@ -28,6 +28,5 @@ jobs:
         with:
           bun-version: 'latest'
       - run: bun install --frozen-lockfile
-      # Existing UI code is not uniformly Prettier-formatted. Keep ESLint
-      # focused on correctness rules while formatting is migrated separately.
+      # Formatting is tracked separately; CI enforces correctness rules now.
       - run: bunx eslint . --rule 'prettier/prettier: off'
