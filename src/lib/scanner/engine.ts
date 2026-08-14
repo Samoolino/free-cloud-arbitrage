@@ -72,7 +72,13 @@ export class ScannerEngine {
   }
 
   stop() {
-    for (const u of this.unsubs) try { u(); } catch {}
+    for (const u of this.unsubs) {
+      try {
+        u();
+      } catch {
+        // Adapter cleanup is best-effort.
+      }
+    }
     this.unsubs = [];
     if (this.timer) clearTimeout(this.timer);
     this.timer = null;

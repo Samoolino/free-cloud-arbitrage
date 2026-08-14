@@ -1,5 +1,6 @@
 import { createServerFn } from "@tanstack/react-start";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
+import { encryptExchangeSecret } from "@/lib/exchange-crypto.server";
 import { z } from "zod";
 
 export const listExchangeCredentials = createServerFn({ method: "GET" })
@@ -38,9 +39,9 @@ export const upsertExchangeCredential = createServerFn({ method: "POST" })
       enabled: data.enabled ?? true,
       is_trigger: data.is_trigger ?? false,
       taker_fee_bps: data.taker_fee_bps ?? null,
-      api_key_enc: data.api_key !== undefined ? (data.api_key ? btoa(data.api_key) : null) : undefined,
-      api_secret_enc: data.api_secret !== undefined ? (data.api_secret ? btoa(data.api_secret) : null) : undefined,
-      passphrase_enc: data.passphrase !== undefined ? (data.passphrase ? btoa(data.passphrase) : null) : undefined,
+      api_key_enc: data.api_key !== undefined ? (data.api_key ? encryptExchangeSecret(data.api_key) : null) : undefined,
+      api_secret_enc: data.api_secret !== undefined ? (data.api_secret ? encryptExchangeSecret(data.api_secret) : null) : undefined,
+      passphrase_enc: data.passphrase !== undefined ? (data.passphrase ? encryptExchangeSecret(data.passphrase) : null) : undefined,
     } satisfies Record<string, unknown>;
     if (data.is_trigger) {
       await supabase.from("exchange_credentials").update({ is_trigger: false }).eq("user_id", userId);
