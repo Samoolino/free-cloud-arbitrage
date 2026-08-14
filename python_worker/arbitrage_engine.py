@@ -1,16 +1,19 @@
-"""Conservative, executable arbitrage calculations.
+"""Real-time conservative arbitrage profitability engine.
 
-Market data is considered eligible only while it is fresh and has enough
-visible depth. Profit is calculated after exchange fees, estimated slippage,
-and a configurable safety buffer. This is a profitability gate, not a promise
-that live trading can never lose money.
+The engine accepts normalized live quotes and only emits an opportunity when
+current executable prices, visible depth, fees, slippage allowance, quote
+freshness and a configurable profit buffer all pass. It is deliberately
+independent of the UI so the strategy can continue without Lovable.
+
+A positive gate is not a mathematical guarantee against market risk; the
+execution layer must revalidate every leg immediately before order placement.
 """
 from __future__ import annotations
 
 from dataclasses import dataclass
 from itertools import permutations
 from time import time
-from typing import Dict, Iterable, List, Optional
+from typing import Dict, Iterable, List, Optional, Tuple
 
 
 @dataclass(frozen=True)
@@ -30,12 +33,21 @@ class Quote:
 
 
 @dataclass(frozen=True)
-class Opportunity:
+class RouteLeg:
+    exchange: str
     symbol: str
-    buy_exchange: str
-    sell_exchange: str
+    side: str
+    price: float
     amount: float
+    fee_usd: float
+
+
+@dataclass(frozen=True)
+class Opportunity:
+    route_type: str
+    legs: Tuple[RouteLeg, ...]
     input_usdt: float
+    expected_output_usdt: float
     gross_profit_usd: float
     fees_usd: float
     slippage_usd: float
@@ -46,9 +58,14 @@ class Opportunity:
 
 
 class ArbitrageEngine:
-    def __init__(self, min_profit_usd: float = 0.05, min_profit_pct: float = 0.10,
-                 slippage_bps: float = 5.0, safety_buffer_bps: float = 5.0,
-                 max_quote_age_ms: int = 1000) -> None:
+    def __init__(
+        self,
+        min_profit_usd: float = 0.05,
+        min_profit_pct: float = 0.10,
+        slippage_bps: float = 5.0,
+        safety_buffer_bps: float = 5.0,
+        max_quote_age_ms: int = 1000,
+    ) -> None:
         self.min_profit_usd = min_profit_usd
         self.min_profit_pct = min_profit_pct
         self.slippage_bps = slippage_bps
@@ -56,15 +73,19 @@ class ArbitrageEngine:
         self.max_quote_age_ms = max_quote_age_ms
 
     def _valid(self, q: Quote) -> bool:
-        return (q.bid > 0 and q.ask > 0 and q.bid_size > 0 and q.ask_size > 0
-                and q.bid < q.ask and q.age_ms <= self.max_quote_age_ms
-                and 0 <= q.fee_rate < 1)
+        return (
+            q.bid > 0 and q.ask > 0 and q.bid_size > 0 and q.ask_size > 0
+            and q.bid < q.ask
+            and q.age_ms <= self.max_quote_age_ms
+            and 0 <= q.fee_rate < 1
+        )
 
     def two_leg(self, buy: Quote, sell: Quote, input_usdt: float) -> Optional[Opportunity]:
         if not self._valid(buy) or not self._valid(sell):
             return None
         if buy.symbol != sell.symbol or buy.exchange == sell.exchange or buy.ask >= sell.bid:
             return None
+
         amount = min(input_usdt / buy.ask, buy.ask_size, sell.bid_size)
         if amount <= 0:
             return None
@@ -76,23 +97,36 @@ class ArbitrageEngine:
         slippage = (cost + proceeds) * self.slippage_bps / 10000
         safety = (cost + proceeds) * self.safety_buffer_bps / 10000
         net = gross - buy_fee - sell_fee - slippage - safety
-        pct = (net / cost) * 100 if cost else 0.0
+        pct = (net / cost) * 100 if cost else 0
         if net < self.min_profit_usd or pct < self.min_profit_pct:
             return None
+
+        legs = (
+            RouteLeg(buy.exchange, buy.symbol, "buy", buy.ask, amount, buy_fee),
+            RouteLeg(sell.exchange, sell.symbol, "sell", sell.bid, amount, sell_fee),
+        )
         return Opportunity(
-            buy.symbol, buy.exchange, sell.exchange, amount, cost, gross,
-            buy_fee + sell_fee, slippage, safety, net, pct,
-            max(buy.age_ms, sell.age_ms),
+            route_type="two_leg",
+            legs=legs,
+            input_usdt=cost,
+            expected_output_usdt=proceeds - sell_fee,
+            gross_profit_usd=gross,
+            fees_usd=buy_fee + sell_fee,
+            slippage_usd=slippage,
+            safety_buffer_usd=safety,
+            expected_profit_usd=net,
+            expected_profit_pct=pct,
+            max_quote_age_ms=max(buy.age_ms, sell.age_ms),
         )
 
-    def scan(self, quotes: Iterable[Quote], input_usdt: float) -> List[Opportunity]:
+    def scan_two_leg(self, quotes: Iterable[Quote], input_usdt: float) -> List[Opportunity]:
         grouped: Dict[str, List[Quote]] = {}
-        for quote in quotes:
-            grouped.setdefault(quote.symbol, []).append(quote)
-        found: List[Opportunity] = []
-        for candidates in grouped.values():
-            for buy, sell in permutations(candidates, 2):
-                opportunity = self.two_leg(buy, sell, input_usdt)
-                if opportunity:
-                    found.append(opportunity)
-        return sorted(found, key=lambda item: item.expected_profit_usd, reverse=True)
+        for q in quotes:
+            grouped.setdefault(q.symbol, []).append(q)
+        results: List[Opportunity] = []
+        for entries in grouped.values():
+            for buy, sell in permutations(entries, 2):
+                result = self.two_leg(buy, sell, input_usdt)
+                if result:
+                    results.append(result)
+        return sorted(results, key=lambda item: item.expected_profit_usd, reverse=True)
