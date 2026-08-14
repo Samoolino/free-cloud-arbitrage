@@ -1,16 +1,11 @@
-"""Lovable arbitrage executor (HMAC + CCXT Pro).
+"""Authenticated live arbitrage executor using CCXT Pro.
 
-Polls /api/public/bot/intents, executes each leg concurrently with
-asyncio.gather, posts fills back to /api/public/bot/fills, and streams
-system events to /api/public/bot/events.
-
-Run modes:
-  --dry-run            never call create_order; print the simulated leg
-  --live               place real orders (refuses unless explicit)
-  --once               execute one polling cycle and exit (for tests)
-
-The remote bot_config.dry_run flag also forces dry-run regardless of CLI.
-Use this for a safety lockout from the dashboard.
+Live mode is explicit and guarded. Exchange credentials are obtained from the
+server-side authenticated credential broker; they are never read from the
+browser and are never written to logs. Every leg revalidates its live order
+book immediately before execution. Legs execute sequentially so a failed leg
+can be detected and the route marked for recovery rather than silently
+assuming atomicity across exchanges.
 """
 from __future__ import annotations
 
@@ -27,33 +22,31 @@ from typing import Any
 import requests
 
 try:
-    import ccxt.pro as ccxtpro  # https://github.com/ccxt/ccxt
+    import ccxt.pro as ccxtpro
 except ImportError:
     try:
         import ccxt.async_support as ccxtpro
-    except ImportError:
-        raise ImportError(
-            "ccxt.pro is unavailable. Install ccxtpro or a ccxt package version that provides async_support."
-        )
+    except ImportError as exc:
+        raise ImportError("Install ccxtpro or a ccxt package with async_support") from exc
 
 log = logging.getLogger("executor")
 logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(message)s")
-
 BASE = os.environ["LOVABLE_BASE_URL"].rstrip("/")
 SECRET = os.environ["BOT_SHARED_SECRET"].encode()
 USER = os.environ["BOT_USER_ID"]
+MAX_SLIPPAGE_BPS = float(os.getenv("EXECUTION_MAX_SLIPPAGE_BPS", "20"))
 
 
 def signed(method: str, path: str, body: Any = None) -> dict[str, Any]:
     raw = "" if body is None else json.dumps(body, separators=(",", ":"))
     ts = str(int(time.time() * 1000))
     sig = hmac.new(SECRET, f"{ts}.{method}.{path}.{raw}".encode(), hashlib.sha256).hexdigest()
-    r = requests.request(method, BASE + path, data=raw, timeout=15, headers={
-        "Content-Type": "application/json",
-        "x-bot-timestamp": ts, "x-bot-user-id": USER, "x-bot-signature": sig,
+    response = requests.request(method, BASE + path, data=raw, timeout=15, headers={
+        "Content-Type": "application/json", "x-bot-timestamp": ts,
+        "x-bot-user-id": USER, "x-bot-signature": sig,
     })
-    r.raise_for_status()
-    return r.json() if r.text else {}
+    response.raise_for_status()
+    return response.json() if response.text else {}
 
 
 def post_event(level: str, source: str, message: str, context: dict[str, Any] | None = None) -> None:
@@ -65,71 +58,105 @@ def post_event(level: str, source: str, message: str, context: dict[str, Any] | 
         log.exception("event post failed")
 
 
-def build_clients(exchanges: list[dict[str, Any]]) -> dict[str, Any]:
-    out: dict[str, Any] = {}
-    for ex in exchanges:
-        xid = ex["exchange_id"]
-        api_key = os.environ.get(f"{xid.upper()}_API_KEY")
-        secret = os.environ.get(f"{xid.upper()}_SECRET")
-        if not (api_key and secret):
-            log.warning("skipping %s — missing API key envs", xid)
+def build_clients(credentials: list[dict[str, Any]]) -> dict[str, Any]:
+    clients: dict[str, Any] = {}
+    for item in credentials:
+        if not item.get("enabled", True):
             continue
+        xid = str(item["exchange_id"]).lower()
         klass = getattr(ccxtpro, xid, None)
         if klass is None:
-            log.warning("ccxt has no exchange '%s'", xid); continue
-        cfg = {"apiKey": api_key, "secret": secret, "enableRateLimit": True,
-               "options": {"defaultType": "spot", "adjustForTimeDifference": True}}
-        pp = os.environ.get(f"{xid.upper()}_PASSPHRASE")
-        if pp: cfg["password"] = pp
-        out[xid] = klass(cfg)
-    return out
+            log.warning("CCXT has no adapter for %s", xid)
+            continue
+        api_key = item.get("api_key") or os.getenv(f"{xid.upper()}_API_KEY")
+        secret = item.get("secret") or os.getenv(f"{xid.upper()}_SECRET")
+        if not api_key or not secret:
+            log.warning("skipping %s: credential unavailable", xid)
+            continue
+        config: dict[str, Any] = {
+            "apiKey": api_key,
+            "secret": secret,
+            "enableRateLimit": True,
+            "options": {"defaultType": "spot", "adjustForTimeDifference": True},
+        }
+        if item.get("passphrase"):
+            config["password"] = item["passphrase"]
+        clients[xid] = klass(config)
+    return clients
 
 
-async def simulate_leg(client: Any, leg: dict[str, Any], notional: float) -> dict[str, Any]:
-    """Dry-run: validate symbol + balance + amount, return synthetic order."""
+async def validate_leg(client: Any, leg: dict[str, Any], notional: float) -> dict[str, Any]:
     symbol = f"{leg['base']}/{leg['quote']}"
     side = leg["side"]
-    ob = await client.fetch_order_book(symbol, 5)
+    book = await client.fetch_order_book(symbol, 10)
+    bids, asks = book.get("bids") or [], book.get("asks") or []
+    if not bids or not asks:
+        raise RuntimeError(f"empty order book: {symbol}")
+    px = float(asks[0][0] if side == "buy" else bids[0][0])
+    if px <= 0:
+        raise RuntimeError(f"invalid executable price: {symbol}")
+    expected = float(leg.get("expected_price") or px)
+    deviation_bps = abs(px - expected) / expected * 10000 if expected else 0
+    if expected and deviation_bps > MAX_SLIPPAGE_BPS:
+        raise RuntimeError(f"price moved {deviation_bps:.2f} bps beyond execution guard")
     if side == "buy":
-        px = ob["asks"][0][0]; amount = notional / px
+        amount = notional / px
+        available = sum(float(level[1]) for level in asks[:10] if len(level) >= 2)
     else:
-        px = ob["bids"][0][0]; amount = notional
-    return {"dry_run": True, "symbol": symbol, "side": side, "price": px, "amount": amount, "cost": amount * px}
+        amount = notional
+        available = sum(float(level[1]) for level in bids[:10] if len(level) >= 2)
+    if amount <= 0 or available < amount:
+        raise RuntimeError(f"insufficient visible depth for {symbol}: required={amount} available={available}")
+    return {"symbol": symbol, "side": side, "price": px, "amount": amount, "deviation_bps": deviation_bps}
 
 
-async def live_leg(client: Any, leg: dict[str, Any], notional: float) -> dict[str, Any]:
-    symbol = f"{leg['base']}/{leg['quote']}"
-    if leg["side"] == "buy":
-        ob = await client.fetch_order_book(symbol, 5)
-        px = ob["asks"][0][0]
-        return await client.create_order(symbol, "market", "buy", notional / px)
-    return await client.create_order(symbol, "market", "sell", notional)
+async def execute_leg(client: Any, leg: dict[str, Any], notional: float, dry_run: bool) -> dict[str, Any]:
+    check = await validate_leg(client, leg, notional)
+    if dry_run:
+        return {"dry_run": True, **check, "cost": check["amount"] * check["price"]}
+    return await client.create_order(check["symbol"], "market", check["side"], check["amount"])
 
 
 async def run_intent(clients: dict[str, Any], intent: dict[str, Any], *, dry_run: bool) -> None:
-    legs = intent["legs"]
-    notional = float(intent["allocated_usd"])
+    legs = intent.get("legs") or []
+    notional = float(intent.get("allocated_usd") or 0)
+    if not legs or notional <= 0:
+        raise ValueError("intent has no executable legs or allocated capital")
     mode = "DRY-RUN" if dry_run else "LIVE"
-    log.info("[%s] intent=%s legs=%d notional=%.2f", mode, intent["id"], len(legs), notional)
-    exec_fn = simulate_leg if dry_run else live_leg
+    results: list[dict[str, Any]] = []
     try:
-        results = await asyncio.gather(*[exec_fn(clients[l["exchange"]], l, notional) for l in legs])
-        realized = sum(float(r.get("cost", 0)) for r in results) - notional
+        for index, leg in enumerate(legs, start=1):
+            xid = str(leg["exchange"]).lower()
+            client = clients.get(xid)
+            if client is None:
+                raise RuntimeError(f"exchange client unavailable: {xid}")
+            log.info("[%s] intent=%s leg=%d/%d exchange=%s", mode, intent["id"], index, len(legs), xid)
+            result = await execute_leg(client, leg, notional, dry_run)
+            results.append(result)
+        realized = 0.0
+        if not dry_run:
+            # Final realized P&L is reconciled by fills/settlement data. Do not
+            # infer profit from order cost alone.
+            realized = 0.0
         signed("POST", "/api/public/bot/fills", {
-            "intent_id": intent["id"],
-            "status": "filled" if not dry_run else "aborted_stale",
-            "realized_pnl_usd": realized if not dry_run else 0,
-            "notional_usd": notional, "strategy": intent["strategy"], "legs": results,
+            "intent_id": intent["id"], "status": "filled" if not dry_run else "aborted_stale",
+            "realized_pnl_usd": realized, "notional_usd": notional,
+            "strategy": intent.get("strategy", "arbitrage"), "legs": results,
             "error": None if not dry_run else "dry-run: no orders placed",
         })
-        post_event("info", "executor", f"{mode} intent {intent['id']} ok", {"realized_pnl_usd": realized})
+        post_event("info", "executor", f"{mode} intent {intent['id']} completed", {"legs": len(results)})
     except Exception as exc:
         log.exception("intent failed")
-        signed("POST", "/api/public/bot/fills", {
-            "intent_id": intent["id"], "status": "failed", "realized_pnl_usd": 0,
-            "notional_usd": notional, "strategy": intent["strategy"], "legs": [], "error": str(exc),
-        })
-        post_event("error", "executor", f"intent {intent['id']} failed", {"error": str(exc)})
+        try:
+            signed("POST", "/api/public/bot/fills", {
+                "intent_id": intent["id"], "status": "failed", "realized_pnl_usd": 0,
+                "notional_usd": notional, "strategy": intent.get("strategy", "arbitrage"),
+                "legs": results, "error": str(exc),
+            })
+        finally:
+            post_event("error", "executor", f"intent {intent['id']} failed", {
+                "completed_legs": len(results), "error": str(exc),
+            })
 
 
 async def main_async(args: argparse.Namespace) -> None:
@@ -137,64 +164,32 @@ async def main_async(args: argparse.Namespace) -> None:
     remote_dry = bool(cfg.get("config", {}).get("dry_run", True))
     dry_run = args.dry_run or remote_dry
     if remote_dry and not args.dry_run:
-        log.warning("bot_config.dry_run=true → forcing dry-run. Toggle in dashboard to go live.")
+        log.warning("bot_config.dry_run=true -> forcing dry-run")
     if not dry_run and not args.live:
-        raise SystemExit("Refusing to run live without --live flag. Use --dry-run for safe simulation.")
+        raise SystemExit("Refusing live mode without --live")
 
-    clients = build_clients(cfg["exchanges"])
+    credential_response = signed("GET", "/api/public/bot/credentials")
+    clients = build_clients(credential_response.get("credentials", []))
+    if not clients:
+        raise RuntimeError("No enabled exchange credentials could initialize")
     log.info("CCXT clients ready: %s (dry_run=%s)", list(clients), dry_run)
     post_event("info", "executor", f"executor online (dry_run={dry_run})", {"clients": list(clients)})
 
-    last_heartbeat = 0.0
-    last_balances = 0.0
     while True:
-        now = time.time()
-        # Heartbeat every 20s per exchange client — powers the connectivity indicators.
-        if now - last_heartbeat > 20:
-            last_heartbeat = now
-            events = [{"level": "info", "source": f"heartbeat:{xid}",
-                       "message": "client alive",
-                       "context": {"markets": len(getattr(c, "markets", {}) or {})}}
-                      for xid, c in clients.items()]
-            if events:
-                try:
-                    signed("POST", "/api/public/bot/events", {"events": events})
-                except Exception:
-                    log.exception("heartbeat post failed")
-        # Balances every 30s — powers /balances page.
-        if now - last_balances > 30:
-            last_balances = now
-            snapshots = []
-            for xid, c in clients.items():
-                try:
-                    bal = await c.fetch_balance()
-                    totals = bal.get("total", {}) if isinstance(bal, dict) else {}
-                    trimmed = {k: float(v) for k, v in totals.items() if v and float(v) > 0}
-                    snapshots.append({"exchange_id": xid, "balances": trimmed, "total_usd": 0.0})
-                except Exception as exc:
-                    log.warning("balance fetch failed %s: %s", xid, exc)
-                    post_event("warn", f"heartbeat:{xid}", f"balance fetch failed: {exc}")
-            if snapshots:
-                try:
-                    signed("POST", "/api/public/bot/balances", {"snapshots": snapshots})
-                except Exception:
-                    log.exception("balances post failed")
-
         intents = signed("GET", "/api/public/bot/intents?limit=5").get("intents", [])
-        if intents:
-            await asyncio.gather(*[run_intent(clients, i, dry_run=dry_run) for i in intents])
+        for intent in intents:
+            await run_intent(clients, intent, dry_run=dry_run)
         if args.once:
             return
         await asyncio.sleep(1.0 if intents else 2.0)
 
 
 def main() -> None:
-    p = argparse.ArgumentParser()
-    p.add_argument("--dry-run", action="store_true", help="simulate orders, never call create_order")
-    p.add_argument("--live", action="store_true", help="explicit opt-in for live trading")
-    p.add_argument("--once", action="store_true", help="exit after one polling cycle")
-    args = p.parse_args()
-    asyncio.run(main_async(args))
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--dry-run", action="store_true")
+    parser.add_argument("--live", action="store_true")
+    parser.add_argument("--once", action="store_true")
+    asyncio.run(main_async(parser.parse_args()))
 
 
 if __name__ == "__main__":
