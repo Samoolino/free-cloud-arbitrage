@@ -1,107 +1,60 @@
-"""Real-time multi-exchange arbitrage opportunity worker.
-
-Exchange enablement is sourced from the authenticated bot configuration so the
-frontend exchange registry remains the control plane. Private API credentials
-are never returned to this market-data worker; they belong to the execution
-runtime only. Public WebSocket order books are normalized and passed through a
-conservative profitability gate before a signal can be marked eligible.
-"""
-from __future__ import annotations
-
-import argparse
 import asyncio
-import hashlib
-import hmac
-import json
-import logging
 import os
 import time
 from typing import Any
 
-import requests
+import ccxt.pro as ccxtpro
 from dotenv import load_dotenv
-from supabase import create_client
-
-try:
-    import ccxt.pro as ccxtpro
-except ImportError:
-    import ccxt.async_support as ccxtpro
 
 from arbitrage_engine import ArbitrageEngine, Quote
 
-ROOT = os.path.dirname(os.path.abspath(__file__))
-load_dotenv(os.path.join(ROOT, ".env"))
+load_dotenv()
 
-SUPABASE_URL = os.getenv("SUPABASE_URL")
-SUPABASE_KEY = os.getenv("SUPABASE_KEY")
-BASE = os.getenv("LOVABLE_BASE_URL", "").rstrip("/")
-BOT_SECRET = os.getenv("BOT_SHARED_SECRET", "").encode()
-BOT_USER = os.getenv("BOT_USER_ID", "")
-
-if not SUPABASE_URL or not SUPABASE_KEY:
-    raise RuntimeError("SUPABASE_URL and SUPABASE_KEY must be set")
-
-supabase = create_client(SUPABASE_URL, SUPABASE_KEY)
-log = logging.getLogger("arbitrage_worker")
-logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(message)s")
-
-SYMBOLS = [s.strip().upper() for s in os.getenv(
-    "ARBITRAGE_SYMBOLS", "BTC/USDT,ETH/USDT,BNB/USDT"
-).split(",") if s.strip()]
+TARGET_SYMBOLS = [s.strip().upper() for s in os.getenv("ARBITRAGE_SYMBOLS", "BTC/USDT,ETH/USDT,BNB/USDT").split(",") if s.strip()]
+EXCHANGES = [s.strip().lower() for s in os.getenv("ARBITRAGE_EXCHANGES", "binance,okx,kraken,coinbase,bybit,kucoin,gateio,mexc,bitget,htx,bitfinex,cryptocom,lbank").split(",") if s.strip()]
 INPUT_USDT = float(os.getenv("ARBITRAGE_INPUT_USDT", "100"))
-MAX_QUOTE_AGE_MS = int(os.getenv("ARBITRAGE_MAX_QUOTE_AGE_MS", "1000"))
-MIN_PROFIT_USD = float(os.getenv("ARBITRAGE_MIN_PROFIT_USD", "0.05"))
-MIN_PROFIT_PCT = float(os.getenv("ARBITRAGE_MIN_PROFIT_PCT", "0.10"))
-SLIPPAGE_BPS = float(os.getenv("ARBITRAGE_SLIPPAGE_BPS", "5"))
-SAFETY_BPS = float(os.getenv("ARBITRAGE_SAFETY_BPS", "5"))
-
-order_books: dict[str, dict[str, Quote]] = {}
+MIN_PROFIT_USD = float(os.getenv("MIN_PROFIT_USD", "0.05"))
+MIN_PROFIT_PCT = float(os.getenv("MIN_PROFIT_PCT", "0.10"))
+SLIPPAGE_BPS = float(os.getenv("SLIPPAGE_BPS", "5"))
+SAFETY_BUFFER_BPS = float(os.getenv("SAFETY_BUFFER_BPS", "5"))
+MAX_QUOTE_AGE_MS = int(os.getenv("MAX_QUOTE_AGE_MS", "1000"))
 
 
-def signed_get(path: str) -> dict[str, Any]:
-    if not (BASE and BOT_SECRET and BOT_USER):
-        raise RuntimeError("LOVABLE_BASE_URL, BOT_SHARED_SECRET and BOT_USER_ID are required")
-    ts = str(int(time.time() * 1000))
-    raw = ""
-    signature = hmac.new(BOT_SECRET, f"{ts}.GET.{path}.{raw}".encode(), hashlib.sha256).hexdigest()
-    response = requests.get(
-        BASE + path,
-        timeout=15,
-        headers={"x-bot-timestamp": ts, "x-bot-user-id": BOT_USER, "x-bot-signature": signature},
-    )
-    response.raise_for_status()
-    return response.json()
+def enabled_exchange_credentials() -> dict[str, dict[str, str]]:
+    """Load only worker-side secrets. Never log values."""
+    result: dict[str, dict[str, str]] = {}
+    for exchange_id in EXCHANGES:
+        prefix = exchange_id.upper()
+        api_key = os.getenv(f"{prefix}_API_KEY")
+        api_secret = os.getenv(f"{prefix}_SECRET") or os.getenv(f"{prefix}_API_SECRET")
+        passphrase = os.getenv(f"{prefix}_PASSPHRASE")
+        if api_key and api_secret:
+            result[exchange_id] = {"api_key": api_key, "api_secret": api_secret, "passphrase": passphrase or ""}
+    return result
 
 
-def enabled_exchange_ids() -> list[str]:
-    """Read enabled exchanges from the same frontend-controlled bot config."""
-    try:
-        cfg = signed_get("/api/public/bot/config")
-        ids = [str(x.get("exchange_id", "")).lower() for x in cfg.get("exchanges", []) if x.get("enabled", True)]
-        ids = [x for x in ids if x]
-        if ids:
-            return ids
-    except Exception as exc:
-        log.warning("bot config unavailable; using ARBITRAGE_EXCHANGES fallback: %s", exc)
-    return [x.strip().lower() for x in os.getenv(
-        "ARBITRAGE_EXCHANGES", "binance,kraken,mexc,lbank,gate,bitfinex,fameex"
-    ).split(",") if x.strip()]
-
-
-async def create_public_clients(exchange_ids: list[str]) -> dict[str, Any]:
+async def build_clients() -> dict[str, Any]:
     clients: dict[str, Any] = {}
-    for exchange_id in exchange_ids:
+    creds = enabled_exchange_credentials()
+    for exchange_id, item in creds.items():
         klass = getattr(ccxtpro, exchange_id, None)
         if klass is None:
-            log.warning("CCXT Pro has no adapter for %s; skipping", exchange_id)
             continue
+        config: dict[str, Any] = {
+            "apiKey": item["api_key"],
+            "secret": item["api_secret"],
+            "enableRateLimit": True,
+            "options": {"defaultType": "spot", "adjustForTimeDifference": True},
+        }
+        if item["passphrase"]:
+            config["password"] = item["passphrase"]
+        client = klass(config)
         try:
-            client = klass({"enableRateLimit": True, "options": {"defaultType": "spot", "adjustForTimeDifference": True}})
             await client.load_markets()
             clients[exchange_id] = client
-            log.info("market adapter ready: %s", exchange_id)
+            print(f"[GREEN] exchange={exchange_id} authenticated markets={len(client.markets)}")
         except Exception as exc:
-            log.warning("market adapter failed: %s: %s", exchange_id, exc)
+            print(f"[RED] exchange={exchange_id} health/auth failed: {exc}")
             try:
                 await client.close()
             except Exception:
@@ -109,92 +62,69 @@ async def create_public_clients(exchange_ids: list[str]) -> dict[str, Any]:
     return clients
 
 
-async def watch_exchange(exchange_id: str, client: Any) -> None:
+async def watch_exchange(exchange_id: str, client: Any, symbols: list[str], quotes: dict[tuple[str, str], Quote], lock: asyncio.Lock) -> None:
     supported = set(client.symbols or [])
-    symbols = [s for s in SYMBOLS if s in supported]
-    if not symbols:
-        log.warning("%s supports none of configured symbols", exchange_id)
+    active = [s for s in symbols if s in supported]
+    if not active:
+        print(f"[YELLOW] {exchange_id}: none of target symbols available")
         return
     while True:
-        try:
-            for symbol in symbols:
+        for symbol in active:
+            try:
                 book = await client.watch_order_book(symbol, 10)
                 bids = book.get("bids") or []
                 asks = book.get("asks") or []
                 if not bids or not asks:
                     continue
-                bid, bid_size = float(bids[0][0]), float(bids[0][1])
-                ask, ask_size = float(asks[0][0]), float(asks[0][1])
-                fee_bps = float(os.getenv(f"{exchange_id.upper()}_TAKER_FEE_BPS", "10"))
-                quote = Quote(exchange_id, symbol, bid, bid_size, ask, ask_size, fee_bps / 10000, int(time.time() * 1000))
-                order_books.setdefault(symbol, {})[exchange_id] = quote
-        except Exception as exc:
-            log.warning("%s websocket error: %s; reconnecting", exchange_id, exc)
-            await asyncio.sleep(2)
+                bid_px, bid_sz = float(bids[0][0]), float(bids[0][1])
+                ask_px, ask_sz = float(asks[0][0]), float(asks[0][1])
+                fee_rate = 0.001
+                try:
+                    fee = await client.fetch_trading_fee(symbol)
+                    fee_rate = float(fee.get("taker", fee_rate))
+                except Exception:
+                    pass
+                quote = Quote(exchange_id, symbol, bid_px, bid_sz, ask_px, ask_sz, fee_rate, int(time.time() * 1000))
+                async with lock:
+                    quotes[(exchange_id, symbol)] = quote
+            except Exception as exc:
+                print(f"[YELLOW] {exchange_id} {symbol} websocket error: {exc}")
+                await asyncio.sleep(1)
 
 
-def write_opportunity(opportunity: Any) -> None:
-    supabase.table("arbitrage_signals").upsert({
-        "symbol": opportunity.symbol,
-        "buy_exchange": opportunity.buy_exchange,
-        "sell_exchange": opportunity.sell_exchange,
-        "expected_pnl": opportunity.expected_profit_usd,
-        "status": "profitable_pending_execution",
-        "buy_tradeable": True,
-        "buy_deposit_enabled": True,
-        "buy_withdraw_enabled": True,
-        "buy_suspended": False,
-        "sell_tradeable": True,
-        "sell_deposit_enabled": True,
-        "sell_withdraw_enabled": True,
-        "sell_suspended": False,
-        "updated_at": time.time(),
-    }, on_conflict="symbol,buy_exchange,sell_exchange").execute()
-
-
-async def opportunity_loop() -> None:
-    engine = ArbitrageEngine(
-        min_profit_usd=MIN_PROFIT_USD,
-        min_profit_pct=MIN_PROFIT_PCT,
-        slippage_bps=SLIPPAGE_BPS,
-        safety_buffer_bps=SAFETY_BPS,
-        max_quote_age_ms=MAX_QUOTE_AGE_MS,
-    )
+async def scanner(quotes: dict[tuple[str, str], Quote], lock: asyncio.Lock, clients: dict[str, Any]) -> None:
+    engine = ArbitrageEngine(MIN_PROFIT_USD, MIN_PROFIT_PCT, SLIPPAGE_BPS, SAFETY_BUFFER_BPS, MAX_QUOTE_AGE_MS)
+    last_emit: set[tuple[str, str, str, float]] = set()
     while True:
-        try:
-            for symbol, books in list(order_books.items()):
-                opportunities = engine.scan(list(books.values()), INPUT_USDT)
-                for opportunity in opportunities[:5]:
-                    log.info(
-                        "PROFITABLE %s %s -> %s amount=%.8f net=$%.6f (%.4f%%)",
-                        opportunity.symbol, opportunity.buy_exchange, opportunity.sell_exchange,
-                        opportunity.amount, opportunity.expected_profit_usd, opportunity.expected_profit_pct,
-                    )
-                    write_opportunity(opportunity)
-            await asyncio.sleep(0.01)
-        except Exception as exc:
-            log.exception("opportunity loop error: %s", exc)
-            await asyncio.sleep(0.5)
+        async with lock:
+            snapshot = list(quotes.values())
+        opportunities = engine.scan_two_leg(snapshot, INPUT_USDT)
+        for opportunity in opportunities[:10]:
+            key = (opportunity.legs[0].exchange, opportunity.legs[1].exchange, opportunity.legs[0].symbol, round(opportunity.expected_profit_usd, 6))
+            if key not in last_emit:
+                print(
+                    f"[GREEN OPPORTUNITY] {opportunity.legs[0].exchange} -> {opportunity.legs[1].exchange} "
+                    f"{opportunity.legs[0].symbol} net=${opportunity.expected_profit_usd:.6f} "
+                    f"({opportunity.expected_profit_pct:.4f}%) age={opportunity.max_quote_age_ms}ms"
+                )
+                last_emit.add(key)
+        if len(last_emit) > 500:
+            last_emit.clear()
+        await asyncio.sleep(0.05)
 
 
 async def main() -> None:
-    exchange_ids = enabled_exchange_ids()
-    clients = await create_public_clients(exchange_ids)
-    if not clients:
-        raise RuntimeError("No supported exchange market adapters are available")
-    tasks = [asyncio.create_task(watch_exchange(xid, client)) for xid, client in clients.items()]
-    tasks.append(asyncio.create_task(opportunity_loop()))
+    clients = await build_clients()
+    if len(clients) < 2:
+        raise RuntimeError("At least two authenticated exchanges are required for arbitrage")
+    quotes: dict[tuple[str, str], Quote] = {}
+    lock = asyncio.Lock()
+    feed_tasks = [watch_exchange(xid, client, TARGET_SYMBOLS, quotes, lock) for xid, client in clients.items()]
     try:
-        await asyncio.gather(*tasks)
+        await asyncio.gather(scanner(quotes, lock, clients), *feed_tasks)
     finally:
-        for client in clients.values():
-            try:
-                await client.close()
-            except Exception:
-                pass
+        await asyncio.gather(*(client.close() for client in clients.values()), return_exceptions=True)
 
 
 if __name__ == "__main__":
-    parser = argparse.ArgumentParser()
-    parser.parse_args()
     asyncio.run(main())
