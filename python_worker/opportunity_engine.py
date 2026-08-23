@@ -40,6 +40,6 @@ def find_candidate(
     fixed_cost: float = 0.0,
     safety_reserve: float = 0.0,
 ) -> Candidate:
-    buy = Quote(buy_venue, buy_bid=0.0, ask=buy_ask, fee_bps=buy_fee_bps, slippage_bps=buy_slippage_bps)
+    buy = Quote(buy_venue, bid=0.0, ask=buy_ask, fee_bps=buy_fee_bps, slippage_bps=buy_slippage_bps)
     sell = Quote(sell_venue, bid=sell_bid, ask=0.0, fee_bps=sell_fee_bps, slippage_bps=sell_slippage_bps)
     return Candidate(symbol, Opportunity(buy, sell, notional, fixed_cost, safety_reserve))
