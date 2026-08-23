@@ -1,0 +1,19 @@
+[Unit]
+Description=Free Cloud Arbitrage Worker
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=YOUR_LINUX_USER
+WorkingDirectory=/opt/free-cloud-arbitrage/python_worker
+EnvironmentFile=/opt/free-cloud-arbitrage/python_worker/.env
+ExecStart=/opt/free-cloud-arbitrage/python_worker/venv/bin/python /opt/free-cloud-arbitrage/python_worker/start_worker.py
+Restart=always
+RestartSec=5
+TimeoutStopSec=30
+NoNewPrivileges=true
+PrivateTmp=true
+
+[Install]
+WantedBy=multi-user.target
