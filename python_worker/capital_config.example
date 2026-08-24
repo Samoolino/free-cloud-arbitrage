@@ -1,0 +1,16 @@
+# Working capital source/sweep configuration
+# NEVER put a private key in this file or in Git.
+CAPITAL_SOURCE_WALLET=0xYOUR_SOURCE_WALLET
+CAPITAL_SWEEP_WALLET=0xYOUR_SWEEP_WALLET
+CAPITAL_STARTING_USD=100.00
+CAPITAL_MAX_WORKING_USD=100.00
+TARGET_EQUITY_USD=150.00
+MIN_PROFIT_PER_TRADE_USD=1.00
+CAPITAL_RESERVE_RATIO=0.10
+
+# Signer is external to this repo. Examples:
+# SIGNER_BACKEND=local-keystore
+# SIGNER_BACKEND=hashicorp-vault
+# SIGNER_BACKEND=hardware-wallet
+SIGNER_BACKEND=
+SIGNER_KEY_REF=
