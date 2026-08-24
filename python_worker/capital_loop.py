@@ -1,9 +1,8 @@
 """Bounded rotating working-capital controller.
 
-The controller tracks one working-capital pool that may be reused for multiple
-opportunities. It does not store or print private keys. The source and sweep
-wallet addresses are configuration values; actual signing must be supplied by
-an external signer/HSM or a locally protected wallet process.
+The controller tracks a reusable working-capital pool. It never stores raw
+private keys and it never signs a sweep. Settlement is deliberately separate
+so a signer/policy layer can require approval and reconciliation.
 """
 from __future__ import annotations
 
@@ -24,6 +23,14 @@ class CapitalConfig:
 
 class CapitalLoop:
     def __init__(self, config: CapitalConfig) -> None:
+        if config.starting_capital <= 0 or config.max_working_capital <= 0:
+            raise ValueError("capital values must be positive")
+        if config.max_working_capital > config.starting_capital:
+            raise ValueError("working-capital cap cannot exceed starting capital")
+        if not Decimal("0") <= config.reserve_ratio < Decimal("1"):
+            raise ValueError("reserve ratio must be in [0, 1)")
+        if config.target_equity <= config.starting_capital:
+            raise ValueError("target must be above starting capital")
         self.config = config
         self.equity = config.starting_capital
         self.realized_pnl = Decimal("0")
@@ -48,6 +55,8 @@ class CapitalLoop:
         return Decimal("0") < notional <= self.available_notional
 
     def record_trade(self, realized_net_pnl: Decimal) -> None:
+        if not self.active:
+            raise RuntimeError("capital loop is not active")
         self.realized_pnl += realized_net_pnl
         self.equity += realized_net_pnl
         self.trades += 1
@@ -76,11 +85,12 @@ class SettlementRequired(RuntimeError):
 
 
 def build_sweep_request(loop: CapitalLoop) -> dict[str, str]:
-    """Return a signer-neutral settlement instruction once the target is met."""
+    """Create a signer-neutral sweep instruction after target attainment."""
     if not loop.target_reached:
         raise SettlementRequired("target has not been reached")
+    loop.stop()
     return {
-        "action": "SWEEP",
+        "action": "SWEEP_REQUEST",
         "from": loop.config.source_wallet,
         "to": loop.config.sweep_wallet,
         "amount": str(loop.equity),
