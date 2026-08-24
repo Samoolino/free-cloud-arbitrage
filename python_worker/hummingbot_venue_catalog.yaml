@@ -1,6 +1,7 @@
-version: 1
-# Catalog of requested Hummingbot-compatible venues/routes.
-# Enable only after adapter-specific auth, market-data and execution tests pass.
+version: 2
+# Expanded Hummingbot-compatible discovery catalog.
+# Enable each connector only after adapter-specific auth, market-data,
+# execution, balance and reconciliation tests pass.
 venues:
   - backpack
   - binance
@@ -64,6 +65,23 @@ integration_contract:
   secrets:
     cex: "API credentials via runtime secret manager; trading-only permissions preferred"
     dex: "RPC + signer reference; raw private keys prohibited in application config"
+
+opportunity_matrix:
+  enabled_pairs:
+    - CEX_CEX
+    - DEX_DEX
+    - CEX_DEX
+  notifications: true
+  executable_assertion_requires:
+    - fresh_quotes
+    - executable_depth
+    - known_fees
+    - gas_cost
+    - slippage_budget
+    - sufficient_inventory
+    - positive_net_profit
+    - capital_gate
+    - venue_health
 
 activation:
   default: disabled
