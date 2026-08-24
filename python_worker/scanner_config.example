@@ -1,0 +1,18 @@
+# Hummingbot market-data service
+HUMMINGBOT_API_URL=http://127.0.0.1:8000
+HUMMINGBOT_API_USER=change_me
+HUMMINGBOT_API_PASS=change_me
+
+# Scanner policy
+SCANNER_MAX_QUOTE_AGE_MS=1500
+SCANNER_ORDER_BOOK_DEPTH=50
+SCANNER_MIN_NET_PNL_USD=1.00
+SCANNER_FIXED_COST_USD=0.00
+SCANNER_SCAN_INTERVAL_MS=250
+
+# Candidate venues/pairs are intentionally explicit rather than blindly
+# trading every connector returned by the API.
+SCANNER_MARKETS=binance:BTC-USDT,kraken:BTC-USDT,binance:ETH-USDT,kraken:ETH-USDT
+
+# Live execution remains controlled separately by the arming/risk layer.
+LIVE_ARBITRAGE=true

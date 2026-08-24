@@ -1,0 +1,77 @@
+version: 1
+
+# Credentials are injected through environment variables or a secret manager.
+# Never put API keys, API secrets, seed phrases, or private keys in this file.
+
+cex:
+  - id: mexc
+    adapter: ccxt
+    env_prefix: MEXC
+    trading: true
+    withdrawals: false
+  - id: gate
+    adapter: ccxt
+    env_prefix: GATE
+    trading: true
+    withdrawals: false
+  - id: binance
+    adapter: ccxt
+    env_prefix: BINANCE
+    trading: true
+    withdrawals: false
+  - id: kraken
+    adapter: ccxt
+    env_prefix: KRAKEN
+    trading: true
+    withdrawals: false
+  - id: okx
+    adapter: ccxt
+    env_prefix: OKX
+    trading: true
+    withdrawals: false
+  - id: bybit
+    adapter: ccxt
+    env_prefix: BYBIT
+    trading: true
+    withdrawals: false
+  - id: coinbase
+    adapter: ccxt
+    env_prefix: COINBASE
+    trading: true
+    withdrawals: false
+  - id: kucoin
+    adapter: ccxt
+    env_prefix: KUCOIN
+    trading: true
+    withdrawals: false
+  - id: bitfinex
+    adapter: ccxt
+    env_prefix: BITFINEX
+    trading: true
+    withdrawals: false
+  - id: lbank
+    adapter: ccxt
+    env_prefix: LBANK
+    trading: true
+    withdrawals: false
+
+dex:
+  # DEX connectivity is chain/RPC/router dependent and should be enabled only
+  # after quote + gas + allowance + settlement tests pass for that chain.
+  - id: uniswap
+    adapter: hummingbot_gateway
+    networks: [ethereum, arbitrum, base, polygon]
+    trading: true
+  - id: pancakeswap
+    adapter: hummingbot_gateway
+    networks: [bsc, ethereum, arbitrum]
+    trading: true
+  - id: sushiswap
+    adapter: hummingbot_gateway
+    networks: [ethereum, arbitrum, polygon, base]
+    trading: true
+
+# Common environment contract. Actual secrets belong in the deployment secret
+# manager. For each CEX: <PREFIX>_API_KEY and <PREFIX>_API_SECRET are required.
+# Some venues may additionally require <PREFIX>_PASSWORD or passphrase.
+# DEX requires chain RPC credentials and a signer reference, not a raw key.

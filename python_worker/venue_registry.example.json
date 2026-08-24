@@ -1,0 +1,33 @@
+{
+  "venues": {
+    "cex": [
+      {"name":"binance","adapter":"ccxt","enabled":true,"api_key_env":"BINANCE_API_KEY","api_secret_env":"BINANCE_API_SECRET","sandbox":false},
+      {"name":"kraken","adapter":"ccxt","enabled":true,"api_key_env":"KRAKEN_API_KEY","api_secret_env":"KRAKEN_API_SECRET","sandbox":false},
+      {"name":"okx","adapter":"ccxt","enabled":false,"api_key_env":"OKX_API_KEY","api_secret_env":"OKX_API_SECRET","password_env":"OKX_API_PASSWORD","sandbox":false},
+      {"name":"bybit","adapter":"ccxt","enabled":false,"api_key_env":"BYBIT_API_KEY","api_secret_env":"BYBIT_API_SECRET","sandbox":false},
+      {"name":"coinbase","adapter":"ccxt","enabled":false,"api_key_env":"COINBASE_API_KEY","api_secret_env":"COINBASE_API_SECRET","sandbox":false},
+      {"name":"kucoin","adapter":"ccxt","enabled":false,"api_key_env":"KUCOIN_API_KEY","api_secret_env":"KUCOIN_API_SECRET","password_env":"KUCOIN_API_PASSWORD","sandbox":false}
+    ],
+    "dex": [
+      {"name":"uniswap","adapter":"hummingbot_gateway","enabled":true,"chain_env":"DEX_CHAIN","rpc_env":"DEX_RPC_URL","wallet_env":"DEX_WALLET_ADDRESS"},
+      {"name":"pancakeswap","adapter":"hummingbot_gateway","enabled":false,"chain_env":"BSC_CHAIN","rpc_env":"BSC_RPC_URL","wallet_env":"BSC_WALLET_ADDRESS"},
+      {"name":"jupiter","adapter":"hummingbot_gateway","enabled":false,"chain_env":"SOLANA_CHAIN","rpc_env":"SOLANA_RPC_URL","wallet_env":"SOLANA_WALLET_ADDRESS"}
+    ]
+  },
+  "networks": {
+    "ethereum": {"rpc_env":"ETH_RPC_URL","native":"ETH"},
+    "arbitrum": {"rpc_env":"ARBITRUM_RPC_URL","native":"ETH"},
+    "base": {"rpc_env":"BASE_RPC_URL","native":"ETH"},
+    "optimism": {"rpc_env":"OPTIMISM_RPC_URL","native":"ETH"},
+    "bsc": {"rpc_env":"BSC_RPC_URL","native":"BNB"},
+    "polygon": {"rpc_env":"POLYGON_RPC_URL","native":"POL"},
+    "solana": {"rpc_env":"SOLANA_RPC_URL","native":"SOL"}
+  },
+  "policy": {
+    "require_explicit_enable": true,
+    "withdrawals_disabled_for_cex": true,
+    "private_keys_in_git": false,
+    "max_quote_age_ms": 750,
+    "require_balance_reconciliation": true
+  }
+}

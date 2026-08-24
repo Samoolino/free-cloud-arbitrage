@@ -1,3 +1,11 @@
+# Secrets / local configuration
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+*.p12
+
 # Logs
 logs
 *.log

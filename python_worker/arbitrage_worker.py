@@ -1,190 +1,148 @@
+"""Live multi-venue market-data and opportunity engine.
+
+Execution is deliberately separated behind an adapter boundary. This worker
+can discover live opportunities across configured CEXs and DEX Gateway, but
+will not sign a wallet transaction or submit an order merely because a spread
+exists. The risk/execution layer must validate depth, balances, fees, gas,
+quote age and capital reservation first.
+"""
+from __future__ import annotations
+
 import asyncio
-import json
 import os
 import time
-from typing import Any, Dict, Optional
+from dataclasses import dataclass
+from typing import Any
 
-import requests
-import websockets
+import ccxt.async_support as ccxt
 from dotenv import load_dotenv
-from supabase import create_client
+
+from opportunity_engine import find_candidate
 
 WORKER_ROOT = os.path.dirname(os.path.abspath(__file__))
-load_dotenv(dotenv_path=os.path.join(WORKER_ROOT, '.env'))
+load_dotenv(os.path.join(WORKER_ROOT, ".env"))
 
-SUPABASE_URL = os.getenv('SUPABASE_URL')
-SUPABASE_KEY = os.getenv('SUPABASE_KEY')
+SYMBOLS = tuple(s.strip() for s in os.getenv("SCANNER_MARKETS", "BTC/USDT,ETH/USDT").split(",") if s.strip())
+MIN_NET_PNL = float(os.getenv("SCANNER_MIN_NET_PNL_USD", "1"))
+MAX_QUOTE_AGE_MS = int(os.getenv("SCANNER_MAX_QUOTE_AGE_MS", "500"))
+MAX_NOTIONAL = float(os.getenv("SCANNER_MAX_NOTIONAL_USD", "1000"))
+SCAN_INTERVAL = float(os.getenv("SCANNER_SCAN_INTERVAL_MS", "250")) / 1000
+LIVE_ARBITRAGE = os.getenv("LIVE_ARBITRAGE", "false").lower() == "true"
 
-if not SUPABASE_URL or not SUPABASE_KEY:
-    raise RuntimeError('SUPABASE_URL and SUPABASE_KEY must be set')
-
-supabase = create_client(SUPABASE_URL, SUPABASE_KEY)
-
-order_books: Dict[str, Dict[str, Any]] = {}
-asset_eligibility_cache: Dict[str, Dict[str, Any]] = {}
-
-
-def get_exchange_configs() -> list[dict[str, Any]]:
-    return [
-        {
-            'id': 'binance',
-            'ws_url': 'wss://stream.binance.com:9443/ws/btcusdt@depth@100ms',
-            'symbol': 'BTC/USDT',
-        },
-        {
-            'id': 'kraken',
-            'ws_url': 'wss://ws.kraken.com/',
-            'symbol': 'BTC/USDT',
-        },
-    ]
+CEXES = {
+    "mexc": "MEXC",
+    "gate": "GATE",
+    "binance": "BINANCE",
+    "kraken": "KRAKEN",
+    "okx": "OKX",
+    "bybit": "BYBIT",
+    "coinbase": "COINBASE",
+    "kucoin": "KUCOIN",
+    "bitfinex": "BITFINEX",
+    "lbank": "LBANK",
+}
 
 
-async def websocket_feed_worker(exchange_id: str, ws_url: str, symbol: str) -> None:
-    print(f'[Worker] Starting stream for {exchange_id}...')
-    while True:
+@dataclass
+class Ticker:
+    venue: str
+    symbol: str
+    bid: float
+    ask: float
+    timestamp_ms: int
+
+
+async def make_exchange(exchange_id: str):
+    cls = getattr(ccxt, exchange_id)
+    prefix = CEXES[exchange_id]
+    key = os.getenv(f"{prefix}_API_KEY")
+    secret = os.getenv(f"{prefix}_API_SECRET")
+    password = os.getenv(f"{prefix}_PASSWORD")
+    config: dict[str, Any] = {"enableRateLimit": True}
+    if key and secret:
+        config.update({"apiKey": key, "secret": secret})
+        if password:
+            config["password"] = password
+    return cls(config)
+
+
+async def fetch_tickers(exchanges: dict[str, Any], symbol: str) -> list[Ticker]:
+    async def one(venue: str, exchange: Any) -> Ticker | None:
         try:
-            async with websockets.connect(ws_url) as ws:
-                if exchange_id == 'kraken':
-                    await ws.send(json.dumps({
-                        'event': 'subscribe',
-                        'pair': ['BTC/USDT'],
-                        'subscription': {'name': 'book', 'depth': 25},
-                    }))
-                async for message in ws:
-                    data = json.loads(message)
-                    if exchange_id == 'binance':
-                        if isinstance(data, dict) and 'asks' in data and 'bids' in data:
-                            order_books[exchange_id] = {
-                                'bid': float(data['bids'][0][0]),
-                                'ask': float(data['asks'][0][0]),
-                                'depth_bids': data['bids'][:5],
-                                'depth_asks': data['asks'][:5],
-                            }
-                    elif exchange_id == 'kraken':
-                        if isinstance(data, dict) and 'bids' in data and 'asks' in data:
-                            order_books[exchange_id] = {
-                                'bid': float(data['bids'][0][0]),
-                                'ask': float(data['asks'][0][0]),
-                                'depth_bids': data['bids'][:5],
-                                'depth_asks': data['asks'][:5],
-                            }
-                    await asyncio.sleep(0)
+            ticker = await exchange.fetch_ticker(symbol)
+            bid, ask = float(ticker.get("bid") or 0), float(ticker.get("ask") or 0)
+            ts = int(ticker.get("timestamp") or time.time() * 1000)
+            if bid > 0 and ask > 0:
+                return Ticker(venue, symbol, bid, ask, ts)
         except Exception as exc:
-            print(f'[Worker Error] {exchange_id} disconnected: {exc}. Reconnecting...')
-            await asyncio.sleep(2)
+            print(f"[QUOTE] {venue} {symbol}: {exc}")
+        return None
+
+    results = await asyncio.gather(*(one(v, e) for v, e in exchanges.items()))
+    return [r for r in results if r]
 
 
-async def evaluate_asset_eligibility(exchange_id: str, symbol: str) -> Dict[str, Any]:
-    cache_key = f'{exchange_id}:{symbol}'
-    now = time.time()
-    cached = asset_eligibility_cache.get(cache_key)
-    if cached and (now - cached.get('fetched_at', 0)) < 60:
-        return cached['data']
-
-    try:
-        if exchange_id == 'binance':
-            endpoint = 'https://api.binance.com/api/v3/exchangeInfo'
-            response = requests.get(endpoint, timeout=10)
-            response.raise_for_status()
-            data = response.json()
-            symbols = {entry['symbol'] for entry in data.get('symbols', [])}
-            is_tradeable = symbol.replace('/', '') in symbols
-            result = {
-                'tradeable': is_tradeable,
-                'deposit_enabled': True,
-                'withdraw_enabled': True,
-                'suspended': False,
-                'network': 'BSC/ETH/ARBITRUM',
-            }
-        else:
-            result = {
-                'tradeable': True,
-                'deposit_enabled': True,
-                'withdraw_enabled': True,
-                'suspended': False,
-                'network': 'unknown',
-            }
-    except Exception as exc:
-        result = {
-            'tradeable': False,
-            'deposit_enabled': False,
-            'withdraw_enabled': False,
-            'suspended': True,
-            'network': 'unknown',
-            'error': str(exc),
-        }
-
-    asset_eligibility_cache[cache_key] = {'fetched_at': now, 'data': result}
-    return result
-
-
-async def arbitrage_pnl_engine(threshold: float = 0.50) -> None:
-    print('[Engine] Arbitrage calculation engine active.')
-    while True:
-        try:
-            if 'binance' in order_books and 'kraken' in order_books:
-                a = order_books['binance']
-                b = order_books['kraken']
-
-                bid_a = a.get('bid', 0.0)
-                ask_a = a.get('ask', 0.0)
-                bid_b = b.get('bid', 0.0)
-                ask_b = b.get('ask', 0.0)
-
-                if bid_a > 0 and ask_b > 0:
-                    spread_1 = bid_a - ask_b
-                    if spread_1 > threshold:
-                        availability_a = await evaluate_asset_eligibility('binance', 'BTC/USDT')
-                        availability_b = await evaluate_asset_eligibility('kraken', 'BTC/USDT')
-                        if availability_a.get('tradeable') and availability_b.get('tradeable') and not availability_a.get('suspended') and not availability_b.get('suspended'):
-                            print(f'[OPPORTUNITY] Buy on Kraken ({ask_b}) -> Sell on Binance ({bid_a}) | Gross PNL: +{spread_1:.2f}')
-                            upsert_signal('BTC/USDT', 'kraken', 'binance', spread_1, availability_a, availability_b)
-
-                if bid_b > 0 and ask_a > 0:
-                    spread_2 = bid_b - ask_a
-                    if spread_2 > threshold:
-                        availability_a = await evaluate_asset_eligibility('binance', 'BTC/USDT')
-                        availability_b = await evaluate_asset_eligibility('kraken', 'BTC/USDT')
-                        if availability_a.get('tradeable') and availability_b.get('tradeable') and not availability_a.get('suspended') and not availability_b.get('suspended'):
-                            print(f'[OPPORTUNITY] Buy on Binance ({ask_a}) -> Sell on Kraken ({bid_b}) | Gross PNL: +{spread_2:.2f}')
-                            upsert_signal('BTC/USDT', 'binance', 'kraken', spread_2, availability_a, availability_b)
-
-            await asyncio.sleep(0.001)
-        except Exception as exc:
-            print(f'[Engine Error] {exc}')
-            await asyncio.sleep(1)
-
-
-def upsert_signal(symbol: str, buy_exchange: str, sell_exchange: str, expected_pnl: float, buy_availability: Dict[str, Any], sell_availability: Dict[str, Any]) -> None:
-    supabase.table('arbitrage_signals').upsert({
-        'symbol': symbol,
-        'buy_exchange': buy_exchange,
-        'sell_exchange': sell_exchange,
-        'expected_pnl': expected_pnl,
-        'status': 'pending_execution',
-        'buy_tradeable': buy_availability.get('tradeable', False),
-        'buy_deposit_enabled': buy_availability.get('deposit_enabled', False),
-        'buy_withdraw_enabled': buy_availability.get('withdraw_enabled', False),
-        'buy_suspended': buy_availability.get('suspended', True),
-        'buy_network': buy_availability.get('network', 'unknown'),
-        'sell_tradeable': sell_availability.get('tradeable', False),
-        'sell_deposit_enabled': sell_availability.get('deposit_enabled', False),
-        'sell_withdraw_enabled': sell_availability.get('withdraw_enabled', False),
-        'sell_suspended': sell_availability.get('suspended', True),
-        'sell_network': sell_availability.get('network', 'unknown'),
-        'updated_at': time.time(),
-    }, on_conflict='symbol,buy_exchange,sell_exchange').execute()
+def best_candidate(tickers: list[Ticker], symbol: str) -> dict[str, Any] | None:
+    now = int(time.time() * 1000)
+    fresh = [t for t in tickers if now - t.timestamp_ms <= MAX_QUOTE_AGE_MS]
+    if len(fresh) < 2:
+        return None
+    best: dict[str, Any] | None = None
+    for buy in fresh:
+        for sell in fresh:
+            if buy.venue == sell.venue or sell.bid <= buy.ask:
+                continue
+            notional = min(MAX_NOTIONAL, max(0.0, MAX_NOTIONAL))
+            candidate = find_candidate(
+                symbol,
+                buy.venue,
+                buy.ask,
+                sell.venue,
+                sell.bid,
+                notional,
+                float(os.getenv(f"{CEXES.get(buy.venue, buy.venue.upper())}_FEE_BPS", "10")),
+                float(os.getenv(f"{CEXES.get(sell.venue, sell.venue.upper())}_FEE_BPS", "10")),
+                float(os.getenv("SCANNER_MAX_SLIPPAGE_BPS", "30")) / 2,
+                float(os.getenv("SCANNER_MAX_SLIPPAGE_BPS", "30")) / 2,
+                float(os.getenv("SCANNER_FIXED_COST_USD", "0")),
+                MIN_NET_PNL,
+            )
+            if candidate.executable and (best is None or candidate.net_pnl > best["net_pnl"]):
+                best = {
+                    "symbol": symbol,
+                    "buy": buy.venue,
+                    "sell": sell.venue,
+                    "net_pnl": candidate.net_pnl,
+                    "gross_edge_pct": candidate.opportunity.gross_edge_pct,
+                    "reason": candidate.reason(),
+                    "assertion": "EXECUTABLE_NOW",
+                    "live_mode": LIVE_ARBITRAGE,
+                }
+    return best
 
 
 async def main() -> None:
-    configs = get_exchange_configs()
-    tasks = [
-        websocket_feed_worker(config['id'], config['ws_url'], config['symbol'])
-        for config in configs
-    ]
-    tasks.append(arbitrage_pnl_engine(threshold=0.50))
-    await asyncio.gather(*tasks)
+    exchanges: dict[str, Any] = {}
+    for exchange_id in CEXES:
+        try:
+            exchanges[exchange_id] = await make_exchange(exchange_id)
+        except Exception as exc:
+            print(f"[INIT] {exchange_id}: disabled: {exc}")
+
+    print(f"[ENGINE] multi-venue scanner active: {', '.join(exchanges) or 'none'}")
+    print(f"[ENGINE] LIVE_ARBITRAGE={LIVE_ARBITRAGE} (execution adapter remains separately armed)")
+
+    try:
+        while True:
+            for symbol in SYMBOLS:
+                tickers = await fetch_tickers(exchanges, symbol)
+                candidate = best_candidate(tickers, symbol)
+                if candidate:
+                    print("[OPPORTUNITY]", candidate)
+            await asyncio.sleep(SCAN_INTERVAL)
+    finally:
+        await asyncio.gather(*(e.close() for e in exchanges.values()), return_exceptions=True)
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     asyncio.run(main())

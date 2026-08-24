@@ -1,0 +1,73 @@
+version: 1
+
+# Venue IDs map to Hummingbot/CCXT/Gateway adapters in venues.yaml.
+# This matrix describes discovery and execution classes, not a guarantee that
+# every venue/network pair is simultaneously executable.
+
+strategy:
+  enabled: true
+  continuous_scan: true
+  notify_before_execution: true
+  execution_requires_arm: true
+  require_fresh_quotes: true
+  require_executable_depth: true
+  require_balance_confirmation: true
+  require_settlement_reconciliation: true
+
+opportunity_classes:
+  - id: CEX_CEX
+    routes: all_enabled_cex_pairs
+    execution: simultaneous_or_hedged_legs
+  - id: DEX_CEX
+    routes: gateway_to_cex
+    execution: inventory_aware_hedged_legs
+  - id: CEX_DEX
+    routes: cex_to_gateway
+    execution: inventory_aware_hedged_legs
+  - id: DEX_DEX
+    routes: gateway_to_gateway
+    execution: atomic_or_hedged_when_supported
+  - id: CROSS_NETWORK
+    routes: pre_funded_multi_chain_inventory
+    execution: do_not_bridge_during_trade_unless_cost_and_latency_gate_pass
+
+notification:
+  channels:
+    - telegram
+    - frontend
+  events:
+    - opportunity_detected
+    - executable_now
+    - execution_submitted
+    - partial_fill
+    - reconciled
+    - risk_lock
+    - target_reached
+    - sweep_requested
+  include:
+    - route
+    - symbol
+    - network
+    - executable_notional
+    - expected_net_pnl
+    - net_pnl_bps
+    - quote_age_ms
+    - estimated_fees
+    - estimated_gas
+    - estimated_slippage
+    - confidence
+    - reason
+
+profit_gate:
+  # The bot never treats a raw ticker spread as profit.
+  formula: "sell_proceeds - buy_cost - fees - gas - slippage - settlement_costs - safety_reserve"
+  minimum_net_pnl_usd_env: SCANNER_MIN_NET_PNL_USD
+  maximum_slippage_bps_env: SCANNER_MAX_SLIPPAGE_BPS
+  maximum_notional_usd_env: SCANNER_MAX_NOTIONAL_USD
+
+rotation:
+  reuse_realized_capital: true
+  require_reconciliation_before_reuse: true
+  stop_when_target_equity_reached: true
+  reserve_ratio_env: CAPITAL_RESERVE_RATIO
+  target_equity_env: TARGET_EQUITY_USD
