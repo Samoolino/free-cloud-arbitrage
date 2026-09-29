@@ -1,4 +1,4 @@
-"""Lovable arbitrage executor (HMAC + CCXT Pro).
+"""Lovable arbitrage executor (HMAC + open-source CCXT).
 
 Polls /api/public/bot/intents, executes each leg concurrently with
 asyncio.gather, posts fills back to /api/public/bot/fills, and streams
@@ -26,22 +26,21 @@ from typing import Any
 
 import requests
 
-try:
-    import ccxt.pro as ccxtpro  # https://github.com/ccxt/ccxt
-except ImportError:
-    try:
-        import ccxt.async_support as ccxtpro
-    except ImportError:
-        raise ImportError(
-            "ccxt.pro is unavailable. Install ccxtpro or a ccxt package version that provides async_support."
-        )
+from ccxt_async import exchange_class
 
 log = logging.getLogger("executor")
 logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(message)s")
 
-BASE = os.environ["LOVABLE_BASE_URL"].rstrip("/")
-SECRET = os.environ["BOT_SHARED_SECRET"].encode()
-USER = os.environ["BOT_USER_ID"]
+def required_env(name: str) -> str:
+    value = os.getenv(name, "").strip()
+    if not value:
+        raise RuntimeError(f"Missing required environment variable: {name}")
+    return value
+
+
+BASE = required_env("LOVABLE_BASE_URL").rstrip("/")
+SECRET = required_env("BOT_SHARED_SECRET").encode()
+USER = required_env("BOT_USER_ID")
 
 
 def signed(method: str, path: str, body: Any = None) -> dict[str, Any]:
@@ -74,9 +73,11 @@ def build_clients(exchanges: list[dict[str, Any]]) -> dict[str, Any]:
         if not (api_key and secret):
             log.warning("skipping %s — missing API key envs", xid)
             continue
-        klass = getattr(ccxtpro, xid, None)
-        if klass is None:
-            log.warning("ccxt has no exchange '%s'", xid); continue
+        try:
+            klass = exchange_class(xid)
+        except ValueError:
+            log.warning("ccxt has no exchange '%s'", xid)
+            continue
         cfg = {"apiKey": api_key, "secret": secret, "enableRateLimit": True,
                "options": {"defaultType": "spot", "adjustForTimeDifference": True}}
         pp = os.environ.get(f"{xid.upper()}_PASSPHRASE")
@@ -85,15 +86,23 @@ def build_clients(exchanges: list[dict[str, Any]]) -> dict[str, Any]:
     return out
 
 
+def order_amount(client: Any, symbol: str, amount: float) -> float:
+    amount = float(client.amount_to_precision(symbol, amount))
+    if amount <= 0:
+        raise ValueError(f"order amount rounds to zero for {symbol}")
+    return amount
+
+
 async def simulate_leg(client: Any, leg: dict[str, Any], notional: float) -> dict[str, Any]:
-    """Dry-run: validate symbol + balance + amount, return synthetic order."""
+    """Dry-run: fetch a current quote and validate the order size."""
     symbol = f"{leg['base']}/{leg['quote']}"
     side = leg["side"]
     ob = await client.fetch_order_book(symbol, 5)
-    if side == "buy":
-        px = ob["asks"][0][0]; amount = notional / px
-    else:
-        px = ob["bids"][0][0]; amount = notional
+    book_side = "asks" if side == "buy" else "bids"
+    if not ob.get(book_side):
+        raise ValueError(f"empty {book_side} for {symbol}")
+    px = float(ob[book_side][0][0])
+    amount = order_amount(client, symbol, notional / px if side == "buy" else notional)
     return {"dry_run": True, "symbol": symbol, "side": side, "price": px, "amount": amount, "cost": amount * px}
 
 
@@ -101,9 +110,11 @@ async def live_leg(client: Any, leg: dict[str, Any], notional: float) -> dict[st
     symbol = f"{leg['base']}/{leg['quote']}"
     if leg["side"] == "buy":
         ob = await client.fetch_order_book(symbol, 5)
-        px = ob["asks"][0][0]
-        return await client.create_order(symbol, "market", "buy", notional / px)
-    return await client.create_order(symbol, "market", "sell", notional)
+        if not ob.get("asks"):
+            raise ValueError(f"empty asks for {symbol}")
+        px = float(ob["asks"][0][0])
+        return await client.create_order(symbol, "market", "buy", order_amount(client, symbol, notional / px))
+    return await client.create_order(symbol, "market", "sell", order_amount(client, symbol, notional))
 
 
 async def run_intent(clients: dict[str, Any], intent: dict[str, Any], *, dry_run: bool) -> None:
@@ -141,51 +152,61 @@ async def main_async(args: argparse.Namespace) -> None:
     if not dry_run and not args.live:
         raise SystemExit("Refusing to run live without --live flag. Use --dry-run for safe simulation.")
 
-    clients = build_clients(cfg["exchanges"])
+    clients = build_clients(cfg.get("exchanges", []))
+    if not clients:
+        raise RuntimeError("No CCXT clients configured. Set EXCHANGE_API_KEY/SECRET for an enabled exchange.")
+    for exchange_id, client in clients.items():
+        await client.load_markets()
+        log.info("Loaded %d markets from %s", len(client.markets), exchange_id)
     log.info("CCXT clients ready: %s (dry_run=%s)", list(clients), dry_run)
     post_event("info", "executor", f"executor online (dry_run={dry_run})", {"clients": list(clients)})
 
     last_heartbeat = 0.0
     last_balances = 0.0
-    while True:
-        now = time.time()
-        # Heartbeat every 20s per exchange client — powers the connectivity indicators.
-        if now - last_heartbeat > 20:
-            last_heartbeat = now
-            events = [{"level": "info", "source": f"heartbeat:{xid}",
-                       "message": "client alive",
-                       "context": {"markets": len(getattr(c, "markets", {}) or {})}}
-                      for xid, c in clients.items()]
-            if events:
-                try:
-                    signed("POST", "/api/public/bot/events", {"events": events})
-                except Exception:
-                    log.exception("heartbeat post failed")
-        # Balances every 30s — powers /balances page.
-        if now - last_balances > 30:
-            last_balances = now
-            snapshots = []
-            for xid, c in clients.items():
-                try:
-                    bal = await c.fetch_balance()
-                    totals = bal.get("total", {}) if isinstance(bal, dict) else {}
-                    trimmed = {k: float(v) for k, v in totals.items() if v and float(v) > 0}
-                    snapshots.append({"exchange_id": xid, "balances": trimmed, "total_usd": 0.0})
-                except Exception as exc:
-                    log.warning("balance fetch failed %s: %s", xid, exc)
-                    post_event("warn", f"heartbeat:{xid}", f"balance fetch failed: {exc}")
-            if snapshots:
-                try:
-                    signed("POST", "/api/public/bot/balances", {"snapshots": snapshots})
-                except Exception:
-                    log.exception("balances post failed")
+    try:
+        while True:
+            now = time.time()
+            if now - last_heartbeat > 20:
+                last_heartbeat = now
+                events = [
+                    {"level": "info", "source": f"heartbeat:{exchange_id}", "message": "client alive",
+                     "context": {"markets": len(getattr(client, "markets", {}) or {})}}
+                    for exchange_id, client in clients.items()
+                ]
+                if events:
+                    try:
+                        signed("POST", "/api/public/bot/events", {"events": events})
+                    except Exception:
+                        log.exception("heartbeat post failed")
+            if now - last_balances > 30:
+                last_balances = now
+                snapshots = []
+                for exchange_id, client in clients.items():
+                    try:
+                        balances = await client.fetch_balance()
+                        totals = balances.get("total", {}) if isinstance(balances, dict) else {}
+                        snapshots.append({
+                            "exchange_id": exchange_id,
+                            "balances": {asset: float(value) for asset, value in totals.items() if value and float(value) > 0},
+                            "total_usd": 0.0,
+                        })
+                    except Exception as exc:
+                        log.warning("balance fetch failed %s: %s", exchange_id, exc)
+                        post_event("warn", f"heartbeat:{exchange_id}", f"balance fetch failed: {exc}")
+                if snapshots:
+                    try:
+                        signed("POST", "/api/public/bot/balances", {"snapshots": snapshots})
+                    except Exception:
+                        log.exception("balances post failed")
 
-        intents = signed("GET", "/api/public/bot/intents?limit=5").get("intents", [])
-        if intents:
-            await asyncio.gather(*[run_intent(clients, i, dry_run=dry_run) for i in intents])
-        if args.once:
-            return
-        await asyncio.sleep(1.0 if intents else 2.0)
+            intents = signed("GET", "/api/public/bot/intents?limit=5").get("intents", [])
+            if intents:
+                await asyncio.gather(*(run_intent(clients, intent, dry_run=dry_run) for intent in intents))
+            if args.once:
+                return
+            await asyncio.sleep(1.0 if intents else 2.0)
+    finally:
+        await asyncio.gather(*(client.close() for client in clients.values()), return_exceptions=True)
 
 
 def main() -> None:
