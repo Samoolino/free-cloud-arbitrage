@@ -6,12 +6,14 @@ import time
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent
-WORKER = ROOT / 'worker.py'
+WORKER = ROOT / 'executor.py'
 
 
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(description='Wrapper for the Free Cloud Arbitrage worker')
     parser.add_argument('--once', action='store_true', help='Run one worker cycle and exit')
+    parser.add_argument('--dry-run', action='store_true', help='simulate orders (safe default)')
+    parser.add_argument('--live', action='store_true', help='explicitly allow live orders when remote config permits')
     return parser.parse_args()
 
 
@@ -37,7 +39,13 @@ def build_worker_command(extra_args: list[str] | None = None) -> list[str]:
 
 def main() -> None:
     args = parse_args()
-    extra_args = ['--once'] if args.once else []
+    extra_args = []
+    if args.once:
+        extra_args.append('--once')
+    if args.dry_run:
+        extra_args.append('--dry-run')
+    if args.live:
+        extra_args.append('--live')
     cmd = build_worker_command(extra_args)
     while True:
         print(f'Starting worker: {cmd}')

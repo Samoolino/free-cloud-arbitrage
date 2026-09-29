@@ -20,13 +20,18 @@ export const Route = createFileRoute("/api/public/bot/intents")({
             .order("created_at", { ascending: true }).limit(limit);
           if (sel.error) return errorBot(sel.error.message, 500);
           const rows = sel.data ?? [];
-          if (rows.length) {
+          // Claim rows conditionally. A second executor can select the same queue
+          // between this read and its update; only return rows this worker claimed.
+          const claimed = [];
+          for (const row of rows) {
             const up = await supabaseAdmin.from("trade_intents")
               .update({ status: "acked", ack_at: new Date().toISOString() })
-              .in("id", rows.map((r) => r.id));
+              .eq("id", row.id).eq("user_id", userId).eq("status", "queued")
+              .select("id").maybeSingle();
             if (up.error) return errorBot(up.error.message, 500);
+            if (up.data) claimed.push(row);
           }
-          return jsonBot({ intents: rows });
+          return jsonBot({ intents: claimed });
         } catch (e) {
           if (e instanceof Response) return e;
           return errorBot((e as Error).message, 500);

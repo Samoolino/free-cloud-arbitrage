@@ -18,8 +18,8 @@ pip install -r requirements.txt
 Create or edit the `.env` file in this folder.
 
 ```env
-SUPABASE_URL=https://your-project.supabase.co
-SUPABASE_KEY=your-supabase-service-role-key
+# Required for the authenticated executor
+# (SUPABASE_URL/SUPABASE_KEY are only needed by legacy market-data workers.)
 
 # Lovable HMAC auth for executor.py
 LOVABLE_BASE_URL=https://yourapp.lovable.app
@@ -45,12 +45,6 @@ WORKER_LOG_FILE=worker.log
 ```
 
 ## 3. Run a safe first test
-
-Use a single dry-run cycle first with the simple signal worker:
-
-```powershell
-python worker.py --once
-```
 
 Validate the Lovable executor auth flow and CCXT client setup without placing real orders:
 
@@ -78,14 +72,14 @@ For real-time orderbook streaming and depth-based opportunity checks:
 python arbitrage_worker.py
 ```
 
-This worker connects to multiple exchange feeds concurrently and writes arbitrage signals into the Supabase table `arbitrage_signals`.
+This compatibility monitor polls multiple exchange books through open-source CCXT and records indicative spreads. It never creates orders; `executor.py` is the only execution path.
 
 ## 5. Run as a background service
 
 For normal continuous operation:
 
 ```bash
-python worker.py
+python executor.py --dry-run
 ```
 
 The worker will keep polling until you stop it with Ctrl+C.
@@ -130,6 +124,7 @@ Start-Service -Name FreeCloudArbitrageWorker
 
 ## 8. Safety notes
 
-- Keep `NO_LOSS_MODE=true` while testing.
-- Use sandbox/testnet credentials when available.
-- Verify your Supabase table names and statuses before running live orders.
+- The worker defaults to the dashboard's `bot_config.dry_run` safety lock. Live orders additionally require `--live`.
+- Use exchange API keys that have trading enabled but withdrawals disabled unless transfers are explicitly implemented and reviewed.
+- Keep the HMAC secret out of source control and give each deployed worker only its own `BOT_USER_ID`.
+- No arbitrage strategy can guarantee a loss-free outcome; test against exchange sandboxes before live use.

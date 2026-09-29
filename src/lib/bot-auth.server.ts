@@ -21,15 +21,22 @@ export async function verifyBotRequest(
   if (!ts || !userId || !sig) throw new Response("missing bot headers", { status: 401 });
 
   const tsNum = Number(ts);
-  if (!Number.isFinite(tsNum) || Math.abs(Date.now() - tsNum) > 5 * 60_000) {
+  if (!Number.isSafeInteger(tsNum) || !/^\d{13}$/.test(ts) || Math.abs(Date.now() - tsNum) > 5 * 60_000) {
     throw new Response("stale timestamp", { status: 401 });
+  }
+  // The worker identity is a Supabase user UUID; reject arbitrary values before
+  // issuing service-role database queries scoped by this header.
+  if (!/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(userId)) {
+    throw new Response("invalid bot user", { status: 401 });
+  }
+  if (!/^[0-9a-f]{64}$/i.test(sig)) {
+    throw new Response("bad signature", { status: 401 });
   }
 
   const payload = `${ts}.${request.method.toUpperCase()}.${pathname}.${rawBody}`;
   const expected = createHmac("sha256", secret).update(payload).digest();
-  let provided: Buffer;
-  try { provided = Buffer.from(sig, "hex"); } catch { throw new Response("bad signature", { status: 401 }); }
-  if (provided.length !== expected.length || !timingSafeEqual(provided, expected)) {
+  const provided = Buffer.from(sig, "hex");
+  if (!timingSafeEqual(provided, expected)) {
     throw new Response("bad signature", { status: 401 });
   }
   return { userId };
